@@ -210,18 +210,19 @@
     </div>
   </div>
 
-  <footer>Данные: ДК · Монетизация · ДИ · Роуминг/VAS · 3Q 2026</footer>
+  <footer>Данные: МегаИнтернет · Монетизация · ДИ · Роуминг/VAS · Групповые продукты · 3Q 2026 · занятость по цвету ячеек</footer>
 
   <script>
     let DATA = null;
     let activeTeams = new Set();
     let sortState = { col: null, asc: true };
 
-    const TEAM_KEYS = ['ДК', 'Монетизация', 'ДИ', 'Роуминг_VAS'];
+    let TEAM_KEYS = [];
 
     async function loadData() {
       const res = await fetch('data.json');
       DATA = await res.json();
+      TEAM_KEYS = Object.keys(DATA.teams);
       document.getElementById('generated').textContent = 'обновлено ' + new Date(DATA.generated).toLocaleString('ru-RU');
       TEAM_KEYS.forEach(t => activeTeams.add(t));
       initFilters();
@@ -356,20 +357,22 @@
     function renderWeekly() {
       const thead = document.querySelector('#weeklyTable thead');
       const tbody = document.querySelector('#weeklyTable tbody');
-      thead.innerHTML = '<tr><th>Неделя</th><th>Всего</th><th>ДК</th><th>Монет.</th><th>ДИ</th><th>Роуминг</th><th>Команды</th><th>Конфликты</th></tr>';
+      const teamHeaders = TEAM_KEYS.map(k => `<th>${DATA.teams[k].full}</th>`).join('');
+      thead.innerHTML = `<tr><th>Неделя</th><th>Всего</th>${teamHeaders}<th>Команды</th><th>Конфликты</th></tr>`;
 
       tbody.innerHTML = DATA.weekly.map(w => {
         const hasConflict = w.conflicts.length > 0;
         const multiTeam = w.activeTeams.length >= 2;
         const cls = hasConflict ? 'conflict-row' : (multiTeam ? 'multi-row' : '');
         const conflicts = w.conflicts.map(c => `${c.role} (${c.teams.join('+')})`).join('; ');
+        const teamCells = TEAM_KEYS.map(k => {
+          const name = DATA.teams[k].full;
+          return `<td>${w.counts[name] ?? w.counts[k] ?? 0}</td>`;
+        }).join('');
         return `<tr class="${cls}">
           <td>${w.weekLabel}</td>
           <td><strong>${w.total}</strong></td>
-          <td>${w.counts['ДК']}</td>
-          <td>${w.counts['Монетизация']}</td>
-          <td>${w.counts['ДИ']}</td>
-          <td>${w.counts['Роуминг/VAS']}</td>
+          ${teamCells}
           <td>${w.activeTeams.join(', ')}</td>
           <td style="color:var(--danger)">${esc(conflicts)}</td>
         </tr>`;
