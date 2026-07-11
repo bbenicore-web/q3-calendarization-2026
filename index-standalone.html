@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Календаризация команд — 3Q 2026</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface2: #243044;
+      --border: #2d3a4f;
+      --text: #e8edf4;
+      --muted: #8b9cb3;
+      --accent: #4f8cff;
+      --danger: #ff6b6b;
+      --danger-bg: rgba(255, 107, 107, 0.15);
+      --warn: #ffc857;
+      --warn-bg: rgba(255, 200, 87, 0.12);
+      --radius: 10px;
+      --shadow: 0 4px 24px rgba(0,0,0,.35);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    header {
+      background: linear-gradient(135deg, #1a2332 0%, #243044 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 1.25rem 1.5rem;
+    }
+    header h1 { font-size: 1.35rem; font-weight: 700; }
+    header p { color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 1.25rem 1.5rem 3rem; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.25rem;
+    }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1rem;
+    }
+    .stat .val { font-size: 1.75rem; font-weight: 700; color: var(--accent); }
+    .stat .lbl { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .tab {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      padding: 0.55rem 1rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: all .15s;
+    }
+    .tab:hover { border-color: var(--accent); color: var(--text); }
+    .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .toolbar {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      align-items: center;
+      margin-bottom: 1rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0.875rem 1rem;
+    }
+    .toolbar label { font-size: 0.8rem; color: var(--muted); }
+    input[type="search"], select {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.45rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+    }
+    input[type="search"] { min-width: 220px; flex: 1; }
+    .chip-group { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+    .chip {
+      padding: 0.3rem 0.65rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      color: var(--muted);
+      transition: all .12s;
+    }
+    .chip.on { color: #fff; border-color: transparent; font-weight: 600; }
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      box-shadow: var(--shadow);
+      max-height: 70vh;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
+    th {
+      position: sticky;
+      top: 0;
+      background: var(--surface2);
+      color: var(--muted);
+      text-align: left;
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+      cursor: pointer;
+      user-select: none;
+      z-index: 2;
+    }
+    th:hover { color: var(--text); }
+    th.sorted { color: var(--accent); }
+    td {
+      padding: 0.55rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:hover td { background: rgba(79, 140, 255, 0.06); }
+    .team-badge {
+      display: inline-block;
+      padding: 0.15rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .conflict-row td { background: var(--danger-bg) !important; }
+    .multi-row td { background: var(--warn-bg) !important; }
+    .week-cell {
+      text-align: center;
+      min-width: 42px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .week-cell.filled { border-radius: 3px; }
+    .week-cell.conflict { background: var(--danger) !important; color: #fff; }
+    .legend {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 0.75rem;
+    }
+    .legend span { display: flex; align-items: center; gap: 0.35rem; }
+    .dot { width: 10px; height: 10px; border-radius: 2px; }
+    .empty { text-align: center; padding: 3rem; color: var(--muted); }
+    .conflict-tasks { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
+    footer { text-align: center; padding: 1.5rem; color: var(--muted); font-size: 0.75rem; }
+    @media (max-width: 768px) {
+      .container { padding: 1rem; }
+      input[type="search"] { min-width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container" style="padding-bottom:0;padding-top:0">
+      <h1>Календаризация команд — 3Q 2026</h1>
+      <p>Интерактивная таблица ресурсов и пересечений · <span id="generated"></span></p>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="stats" id="stats"></div>
+
+    <div class="tabs" id="tabs">
+      <button class="tab active" data-tab="gantt">Задачи и ресурсы</button>
+      <button class="tab" data-tab="conflicts">Пересечения</button>
+      <button class="tab" data-tab="weekly">Сводка по неделям</button>
+    </div>
+
+    <div class="toolbar" id="toolbar">
+      <input type="search" id="search" placeholder="Поиск по задаче, ресурсу, тикету…">
+      <select id="roleFilter"><option value="">Все роли</option></select>
+      <div class="chip-group" id="teamChips"></div>
+    </div>
+
+    <div class="legend">
+      <span><i class="dot" style="background:var(--danger)"></i> Пересечение роли</span>
+      <span><i class="dot" style="background:var(--warn)"></i> 2+ команд активны</span>
+      <span>Клик по заголовку столбца — сортировка</span>
+    </div>
+
+    <div class="panel active" id="panel-gantt">
+      <div class="table-wrap"><table id="ganttTable"><thead></thead><tbody></tbody></table></div>
+    </div>
+    <div class="panel" id="panel-conflicts">
+      <div class="table-wrap"><table id="conflictsTable"><thead></thead><tbody></tbody></table></div>
+    </div>
+    <div class="panel" id="panel-weekly">
+      <div class="table-wrap"><table id="weeklyTable"><thead></thead><tbody></tbody></table></div>
+    </div>
+  </div>
+
+  <footer>Данные: ДК · Монетизация · ДИ · Роуминг/VAS · 3Q 2026</footer>
+
+  <script>
+    let DATA = null;
+    let activeTeams = new Set();
+    let sortState = { col: null, asc: true };
+
+    const TEAM_KEYS = ['ДК', 'Монетизация', 'ДИ', 'Роуминг_VAS'];
+
+    async function loadData() {
+      DATA = {"generated": "2026-07-11T18:20:03.527884", "teams": {"ДК": {"full": "ДК", "color": "#548235", "bg": "#E2EFDA"}, "Монетизация": {"full": "Монетизация", "color": "#2E75B6", "bg": "#DDEBF7"}, "ДИ": {"full": "ДИ", "color": "#C65911", "bg": "#FCE4D6"}, "Роуминг_VAS": {"full": "Роуминг/VAS", "color": "#7030A0", "bg": "#E4DFEC"}}, "weeks": [{"iso": "2026-06-29", "label": "29.06"}, {"iso": "2026-07-06", "label": "06.07"}, {"iso": "2026-07-13", "label": "13.07"}, {"iso": "2026-07-20", "label": "20.07"}, {"iso": "2026-07-27", "label": "27.07"}, {"iso": "2026-08-03", "label": "03.08"}, {"iso": "2026-08-10", "label": "10.08"}, {"iso": "2026-08-17", "label": "17.08"}, {"iso": "2026-08-24", "label": "24.08"}, {"iso": "2026-08-31", "label": "31.08"}, {"iso": "2026-09-07", "label": "07.09"}, {"iso": "2026-09-14", "label": "14.09"}, {"iso": "2026-09-21", "label": "21.09"}, {"iso": "2026-09-28", "label": "28.09"}, {"iso": "2026-10-05", "label": "05.10"}], "entries": [{"team": "ДК", "task": "5G турбо", "resource": "Настя (диз)", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-06-29": "2"}}, {"team": "ДК", "task": "5G турбо", "resource": "Володя (SA)", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-06-29": "5", "2026-07-06": "3", "2026-07-13": "5"}}, {"team": "ДК", "task": "5G турбо", "resource": "ВЕ", "role": "ВЕ", "ticket": "", "type": "", "weeks": {"2026-07-20": "5", "2026-07-27": "5"}}, {"team": "ДК", "task": "5G турбо", "resource": "FE", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-07-20": "5", "2026-07-27": "5"}}, {"team": "ДК", "task": "5G турбо", "resource": "QA", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-07-27": "5", "2026-08-03": "5"}}, {"team": "ДК", "task": "Профиль Киноман", "resource": "Настя (диз)", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-06-29": "3", "2026-07-06": "5", "2026-07-13": "5", "2026-07-20": "5"}}, {"team": "ДК", "task": "Профиль Киноман", "resource": "Володя (SA)", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-07-20": "4", "2026-07-27": "5", "2026-08-03": "5"}}, {"team": "ДК", "task": "Профиль Киноман", "resource": "ВЕ", "role": "ВЕ", "ticket": "", "type": "", "weeks": {"2026-08-03": "4", "2026-08-10": "5", "2026-08-17": "5"}}, {"team": "ДК", "task": "Профиль Киноман", "resource": "FE", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-08-17": "5", "2026-08-24": "5", "2026-09-28": "2"}}, {"team": "ДК", "task": "Профиль Киноман", "resource": "QA", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-08-24": "5", "2026-09-28": "5", "2026-09-07": "4"}}, {"team": "ДК", "task": "Целевая схема возврата", "resource": "Настя (диз)", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-08-03": "5", "2026-08-10": "5", "2026-08-17": "5", "2026-08-24": "5"}}, {"team": "ДК", "task": "Целевая схема возврата", "resource": "Володя (SA)", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-08-17": "5", "2026-08-24": "5", "2026-09-28": "5", "2026-09-07": "отпуск", "2026-09-14": "5"}}, {"team": "ДК", "task": "Коммерческий запуск сетей 5G", "resource": "Настя (диз)", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-07-20": "1"}}, {"team": "ДК", "task": "Коммерческий запуск сетей 5G", "resource": "Володя (SA)", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-07-20": "1"}}, {"team": "ДК", "task": "Коммерческий запуск сетей 5G", "resource": "ВЕ", "role": "ВЕ", "ticket": "", "type": "", "weeks": {"2026-07-20": "1"}}, {"team": "ДК", "task": "Коммерческий запуск сетей 5G", "resource": "FE", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-07-20": "1"}}, {"team": "ДК", "task": "Коммерческий запуск сетей 5G", "resource": "QA", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-07-27": "2"}}, {"team": "ДК", "task": "Страховка как отдельный продукт", "resource": "Настя (диз)", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-09-28": "5", "2026-09-07": "5", "2026-09-14": "5"}}, {"team": "ДК", "task": "Страховка как отдельный продукт", "resource": "Володя (SA)", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-09-21": "5", "2026-09-28": "5", "2026-10-05": "5"}}, {"team": "Монетизация", "task": "Техдолг, баги", "resource": "(общее)", "role": "техдолг", "ticket": "", "type": "", "weeks": {"2026-07-06": "акт", "2026-07-20": "акт", "2026-08-03": "акт", "2026-08-17": "акт", "2026-08-31": "акт", "2026-09-14": "акт", "2026-09-28": "акт"}}, {"team": "Монетизация", "task": "Переезд из монги в ПК (финальные задачи)", "resource": "тесты", "role": "QA", "ticket": "CKO-56897", "type": "", "weeks": {"2026-07-20": "НТ LK-27582"}}, {"team": "Монетизация", "task": "Оптимизация продактс (режим low-power)", "resource": "аналитика", "role": "SA", "ticket": "CKO-56952", "type": "", "weeks": {}}, {"team": "Монетизация", "task": "Оптимизация продактс (режим low-power)", "resource": "бэк", "role": "BE", "ticket": "CKO-56952", "type": "", "weeks": {"2026-08-17": "ресерч", "2026-08-24": "оптимизация"}}, {"team": "Монетизация", "task": "Оптимизация продактс (режим low-power)", "resource": "тесты", "role": "QA", "ticket": "CKO-56952", "type": "", "weeks": {"2026-07-27": "НТ", "2026-08-24": "оптимизация"}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "дизайн", "role": "Дизайн", "ticket": "CKO-58192", "type": "", "weeks": {"2026-07-13": "Е"}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "аналитика", "role": "SA", "ticket": "CKO-58192", "type": "", "weeks": {}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "бэк", "role": "BE", "ticket": "CKO-58192", "type": "", "weeks": {}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "фронт", "role": "FE", "ticket": "CKO-58192", "type": "", "weeks": {}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "тесты", "role": "QA", "ticket": "CKO-58192", "type": "", "weeks": {}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "копирайт", "role": "Копирайт", "ticket": "CKO-58192", "type": "", "weeks": {}}, {"team": "Монетизация", "task": "Ускорение главной", "resource": "бэк", "role": "BE", "ticket": "CKO-58662", "type": "", "weeks": {"2026-07-06": "А"}}, {"team": "Монетизация", "task": "Ускорение главной", "resource": "тесты", "role": "QA", "ticket": "CKO-58662", "type": "", "weeks": {}}, {"team": "Монетизация", "task": "Разметка ключевых сценариев", "resource": "фронт", "role": "FE", "ticket": "CKO-58662", "type": "", "weeks": {}}, {"team": "Монетизация", "task": "Разметка ключевых сценариев", "resource": "тесты", "role": "QA", "ticket": "CKO-58662", "type": "", "weeks": {}}, {"team": "Монетизация", "task": "Автоматизация информирования (IVR-REPRICE)", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-83", "type": "деливери", "weeks": {"2026-06-29": "синк с мкс", "2026-07-13": "синк с мкс"}}, {"team": "Монетизация", "task": "Автоматизация информирования (IVR-REPRICE)", "resource": "бэк", "role": "BE", "ticket": "B2CPROD-83", "type": "деливери", "weeks": {}}, {"team": "Монетизация", "task": "Автоматизация информирования (IVR-REPRICE)", "resource": "тесты", "role": "QA", "ticket": "B2CPROD-83", "type": "деливери", "weeks": {"2026-07-20": "6 готовность мкс канал Тест", "2026-08-10": "ретест на канале ЛК LK-27187"}}, {"team": "Монетизация", "task": "Целевая схема скидок и их взаимодействия", "resource": "дизайн", "role": "Дизайн", "ticket": "B2CPROD-996", "type": "дискавери", "weeks": {"2026-07-06": "старт", "2026-07-13": "?"}}, {"team": "Монетизация", "task": "Целевая схема скидок и их взаимодействия", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-996", "type": "дискавери", "weeks": {}}, {"team": "Монетизация", "task": "Срок действия в Услугах", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-892", "type": "деливери", "weeks": {}}, {"team": "Монетизация", "task": "Срок действия в Услугах", "resource": "бэк", "role": "BE", "ticket": "B2CPROD-892", "type": "деливери", "weeks": {}}, {"team": "Монетизация", "task": "Срок действия в Услугах", "resource": "фронт", "role": "FE", "ticket": "B2CPROD-892", "type": "деливери", "weeks": {}}, {"team": "Монетизация", "task": "Срок действия в Услугах", "resource": "тесты", "role": "QA", "ticket": "B2CPROD-892", "type": "деливери", "weeks": {"2026-07-20": "релиз"}}, {"team": "Монетизация", "task": "Унификация продуктов МФ и Йота", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-400", "type": "дискавери", "weeks": {}}, {"team": "Монетизация", "task": "Унификация продуктов МФ и Йота", "resource": "бэк", "role": "BE", "ticket": "B2CPROD-400", "type": "дискавери", "weeks": {}}, {"team": "Монетизация", "task": "Новые автопроды", "resource": "дизайн", "role": "Дизайн", "ticket": "B2CPROD-1406", "type": "дискавери", "weeks": {"2026-07-13": "старт", "2026-07-20": "?"}}, {"team": "Монетизация", "task": "Новые автопроды", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-1406", "type": "дискавери", "weeks": {}}, {"team": "Монетизация", "task": "Новая механика списания АП при смене тарифа", "resource": "дизайн", "role": "Дизайн", "ticket": "B2CPROD-1409", "type": "дискавери", "weeks": {"2026-07-20": "старт", "2026-08-03": "?"}}, {"team": "Монетизация", "task": "Новая механика списания АП при смене тарифа", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-1409", "type": "дискавери", "weeks": {}}, {"team": "Монетизация", "task": "Склеивание АП при подкл-и услуг", "resource": "дизайн", "role": "Дизайн", "ticket": "B2CPROD-1500", "type": "дискавери", "weeks": {"2026-08-10": "старт"}}, {"team": "Монетизация", "task": "Склеивание АП при подкл-и услуг", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-1500", "type": "дискавери", "weeks": {}}, {"team": "Монетизация", "task": "Репрайс Старта", "resource": "менеджер", "role": "Менеджер", "ticket": "B2CPROD-1412", "type": "деливери", "weeks": {}}, {"team": "Монетизация", "task": "Репрайс архивных ПД FMC", "resource": "менеджер", "role": "Менеджер", "ticket": "B2CPROD-1425", "type": "деливери", "weeks": {}}, {"team": "ДИ", "task": "Повышение эффективности FMC (GM на клиента)", "resource": "SA", "role": "SA", "ticket": "B2CPROD-1055", "type": "", "weeks": {"2026-08-17": "SA", "2026-08-24": "SA"}}, {"team": "ДИ", "task": "Повышение эффективности FMC (GM на клиента)", "resource": "BE", "role": "BE", "ticket": "B2CPROD-1055", "type": "", "weeks": {"2026-08-24": "BE", "2026-08-31": "BE", "2026-09-07": "BE"}}, {"team": "ДИ", "task": "Повышение эффективности FMC (GM на клиента)", "resource": "FE", "role": "FE", "ticket": "B2CPROD-1055", "type": "", "weeks": {"2026-08-31": "FE", "2026-09-07": "FE", "2026-09-14": "FE"}}, {"team": "ДИ", "task": "Повышение эффективности FMC (GM на клиента)", "resource": "SA", "role": "SA", "ticket": "B2CPROD-1055", "type": "", "weeks": {"2026-07-20": "SA", "2026-08-31": "QA", "2026-09-07": "QA", "2026-09-14": "QA", "2026-09-21": "QA", "2026-09-28": "QA"}}, {"team": "ДИ", "task": "Развитие digital витрин подключения, управления, решения проблем клиента", "resource": "BE", "role": "BE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-06-29": "BE", "2026-07-06": "BE", "2026-07-13": "BE", "2026-07-20": "BE", "2026-07-27": "BE"}}, {"team": "ДИ", "task": "Развитие digital витрин подключения, управления, решения проблем клиента", "resource": "FE", "role": "FE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-06-29": "FE", "2026-07-06": "FE", "2026-07-13": "FE", "2026-07-20": "FE"}}, {"team": "ДИ", "task": "Развитие digital витрин подключения, управления, решения проблем клиента", "resource": "QA", "role": "QA", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-06-29": "QA", "2026-07-06": "QA", "2026-07-13": "QA", "2026-07-20": "отпуск QA", "2026-07-27": "QA", "2026-08-03": "QA", "2026-08-10": "QA", "2026-08-17": "QA"}}, {"team": "ДИ", "task": "Развитие digital витрин подключения, управления, решения проблем клиента", "resource": "BE", "role": "BE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-08-03": "BE", "2026-08-10": "BE"}}, {"team": "ДИ", "task": "Развитие digital витрин подключения, управления, решения проблем клиента", "resource": "FE", "role": "FE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-08-03": "FE"}}, {"team": "ДИ", "task": "Развитие digital витрин подключения, управления, решения проблем клиента", "resource": "QA", "role": "QA", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-08-24": "QA", "2026-08-31": "QA", "2026-09-07": "QA"}}, {"team": "ДИ", "task": "Развитие digital витрин подключения, управления, решения проблем клиента", "resource": "BE", "role": "BE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-08-17": "BE", "2026-09-14": "BE"}}, {"team": "ДИ", "task": "Развитие digital витрин подключения, управления, решения проблем клиента", "resource": "FE", "role": "FE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-08-10": "FE"}}, {"team": "ДИ", "task": "Развитие digital витрин подключения, управления, решения проблем клиента", "resource": "QA (S)", "role": "QA", "ticket": "B2CPROD-639", "type": "", "weeks": {"2026-06-29": "QA (S)", "2026-07-06": "QA (S)", "2026-07-13": "QA (S)", "2026-07-20": "QA (S)"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "Дизайн", "role": "Дизайн", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-06-29": "дизайн", "2026-07-06": "дизайн", "2026-07-13": "дизайн", "2026-07-20": "отпуск", "2026-07-27": "отпуск", "2026-08-03": "дизайн"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "UX-исследование - не подтвердили ресурс", "role": "UX", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-07-20": "UX", "2026-07-27": "UX"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "Аналитика", "role": "SA", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-08-10": "аналитика", "2026-08-17": "аналитика", "2026-08-24": "аналитика"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "Бэкенд", "role": "BE", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-08-31": "бэк", "2026-09-07": "бэк"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-09-07": "фронт", "2026-09-14": "фронт"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "Тестирование", "role": "QA", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-09-07": "QA", "2026-09-14": "QA", "2026-09-21": "QA", "2026-09-28": "QA", "2026-10-05": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "Дизайн", "role": "Дизайн", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-08-10": "дизайн", "2026-08-17": "дизайн", "2026-09-07": "дизайн"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "UX-исследование - не подтвердили ресурс", "role": "UX", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-08-24": "UX", "2026-08-31": "UX"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "ADR", "role": "SA", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-08-24": "ADR", "2026-08-31": "ADR"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "Аналитика", "role": "SA", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-09-14": "аналитика", "2026-09-21": "аналитика"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "Бэкенд", "role": "BE", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-09-28": "бэк"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-09-28": "фронт", "2026-10-05": "фронт"}}, {"team": "Роуминг_VAS", "task": "Создание новых расширителей на полке роуминга (минуты, смс, карты)", "resource": "RnD", "role": "RnD", "ticket": "B2CPROD-1128", "type": "Delivery", "weeks": {"2026-06-29": "RnD", "2026-07-06": "RnD"}}, {"team": "Роуминг_VAS", "task": "Создание новых расширителей на полке роуминга (минуты, смс, карты)", "resource": "Бэкенд", "role": "BE", "ticket": "B2CPROD-1128", "type": "Delivery", "weeks": {"2026-07-06": "бэк"}}, {"team": "Роуминг_VAS", "task": "Создание новых расширителей на полке роуминга (минуты, смс, карты)", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-1128", "type": "Delivery", "weeks": {"2026-06-29": "фронт", "2026-07-06": "фронт", "2026-07-13": "фронт"}}, {"team": "Роуминг_VAS", "task": "Создание новых расширителей на полке роуминга (минуты, смс, карты)", "resource": "Тестирование", "role": "QA", "ticket": "B2CPROD-1128", "type": "Delivery", "weeks": {"2026-07-06": "QA", "2026-07-13": "QA", "2026-07-20": "QA", "2026-07-27": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "Новый метод подключения пакетов /bulk", "resource": "Бэкенд", "role": "BE", "ticket": "CKO-58119", "type": "Delivery", "weeks": {"2026-07-13": "бэк"}}, {"team": "Роуминг_VAS", "task": "Новый метод подключения пакетов /bulk", "resource": "Тестирование", "role": "QA", "ticket": "CKO-58119", "type": "Delivery", "weeks": {"2026-07-27": "QA", "2026-08-03": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Скрыть разводящую роуминга\"", "resource": "Веб-аналитика", "role": "SA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-07-13": "web"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Скрыть разводящую роуминга\"", "resource": "Аналитика", "role": "SA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-07-13": "аналитика"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Скрыть разводящую роуминга\"", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-07-20": "фронт", "2026-07-27": "отпуск"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Скрыть разводящую роуминга\"", "resource": "Тестирование", "role": "QA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-08-03": "QA", "2026-08-10": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Безлимит на Яндекс\"", "resource": "Веб-аналитика", "role": "SA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-07-13": "web"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Безлимит на Яндекс\"", "resource": "Аналитика", "role": "SA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-07-13": "аналитика"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Безлимит на Яндекс\"", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-08-03": "фронт"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Безлимит на Яндекс\"", "resource": "Тестирование", "role": "QA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-08-10": "QA", "2026-08-17": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "Моно-пакет минут на полке роуминга", "resource": "Дизайн", "role": "Дизайн", "ticket": "B2CPROD-1563", "type": "Delivery", "weeks": {"2026-07-13": "дизайн"}}, {"team": "Роуминг_VAS", "task": "Моно-пакет минут на полке роуминга", "resource": "Аналитика", "role": "SA", "ticket": "B2CPROD-1563", "type": "Delivery", "weeks": {"2026-07-20": "аналитика", "2026-07-27": "аналитика", "2026-08-03": "аналитика"}}, {"team": "Роуминг_VAS", "task": "Моно-пакет минут на полке роуминга", "resource": "Бэкенд", "role": "BE", "ticket": "B2CPROD-1563", "type": "Delivery", "weeks": {"2026-08-03": "отпуск", "2026-08-10": "отпуск", "2026-08-17": "бэк"}}, {"team": "Роуминг_VAS", "task": "Моно-пакет минут на полке роуминга", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-1563", "type": "Delivery", "weeks": {"2026-08-17": "фронт"}}, {"team": "Роуминг_VAS", "task": "Моно-пакет минут на полке роуминга", "resource": "Тестирование", "role": "QA", "ticket": "B2CPROD-1563", "type": "Delivery", "weeks": {"2026-08-24": "QA", "2026-08-31": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "АБ-тест \"Сайт роуминга\"", "resource": "Дизайн", "role": "Дизайн", "ticket": "B2CPROD-630", "type": "Discovery + delivery", "weeks": {"2026-08-24": "дизайн", "2026-08-31": "дизайн"}}, {"team": "Роуминг_VAS", "task": "Работа над конверсией с страниц стран и карточек пакетов раздела Роуминг в МЛК: 5G, сервисы Яндекса", "resource": "Дизайн", "role": "Дизайн", "ticket": "B2CPROD-1568", "type": "Discovery", "weeks": {"2026-08-24": "дизайн", "2026-08-31": "дизайн"}}, {"team": "Роуминг_VAS", "task": "Работа над конверсией с страниц стран и карточек пакетов раздела Роуминг в МЛК: 5G, сервисы Яндекса", "resource": "UX-исследование - не подтвердили ресурс", "role": "UX", "ticket": "B2CPROD-1568", "type": "Discovery", "weeks": {"2026-09-07": "UX", "2026-09-14": "UX"}}], "conflicts": [{"week": "2026-06-29", "weekLabel": "29.06", "role": "Дизайн", "teams": ["ДК", "Роуминг/VAS"], "tasks": ["[ДК] 5G турбо / Настя (диз)", "[ДК] Профиль Киноман / Настя (диз)", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн"]}, {"week": "2026-06-29", "weekLabel": "29.06", "role": "SA", "teams": ["ДК", "Монетизация"], "tasks": ["[ДК] 5G турбо / Володя (SA)", "[Монетизация] Автоматизация информирования (IVR-REPRIC / аналитика"]}, {"week": "2026-06-29", "weekLabel": "29.06", "role": "FE", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[ДИ] Развитие digital витрин подключения, упр / FE", "[Роуминг/VAS] Создание новых расширителей на полке роу / Фронтенд"]}, {"week": "2026-07-06", "weekLabel": "06.07", "role": "Дизайн", "teams": ["ДК", "Монетизация", "Роуминг/VAS"], "tasks": ["[ДК] Профиль Киноман / Настя (диз)", "[Монетизация] Целевая схема скидок и их взаимодействия / дизайн", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн"]}, {"week": "2026-07-06", "weekLabel": "06.07", "role": "BE", "teams": ["ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Ускорение главной / бэк", "[ДИ] Развитие digital витрин подключения, упр / BE", "[Роуминг/VAS] Создание новых расширителей на полке роу / Бэкенд"]}, {"week": "2026-07-06", "weekLabel": "06.07", "role": "FE", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[ДИ] Развитие digital витрин подключения, упр / FE", "[Роуминг/VAS] Создание новых расширителей на полке роу / Фронтенд"]}, {"week": "2026-07-06", "weekLabel": "06.07", "role": "QA", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[ДИ] Развитие digital витрин подключения, упр / QA", "[ДИ] Развитие digital витрин подключения, упр / QA (S)", "[Роуминг/VAS] Создание новых расширителей на полке роу / Тестирование"]}, {"week": "2026-07-13", "weekLabel": "13.07", "role": "SA", "teams": ["ДК", "Монетизация", "Роуминг/VAS"], "tasks": ["[ДК] 5G турбо / Володя (SA)", "[Монетизация] Автоматизация информирования (IVR-REPRIC / аналитика", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Веб-аналитика", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Аналитика", "[Роуминг/VAS] ABC-тест \"Безлимит на Яндекс\" / Веб-аналитика", "[Роуминг/VAS] ABC-тест \"Безлимит на Яндекс\" / Аналитика"]}, {"week": "2026-07-13", "weekLabel": "13.07", "role": "Дизайн", "teams": ["ДК", "Монетизация", "Роуминг/VAS"], "tasks": ["[ДК] Профиль Киноман / Настя (диз)", "[Монетизация] Обновление раздела Инфо / дизайн", "[Монетизация] Целевая схема скидок и их взаимодействия / дизайн", "[Монетизация] Новые автопроды / дизайн", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Дизайн"]}, {"week": "2026-07-13", "weekLabel": "13.07", "role": "BE", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[ДИ] Развитие digital витрин подключения, упр / BE", "[Роуминг/VAS] Новый метод подключения пакетов /bulk / Бэкенд"]}, {"week": "2026-07-13", "weekLabel": "13.07", "role": "FE", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[ДИ] Развитие digital витрин подключения, упр / FE", "[Роуминг/VAS] Создание новых расширителей на полке роу / Фронтенд"]}, {"week": "2026-07-13", "weekLabel": "13.07", "role": "QA", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[ДИ] Развитие digital витрин подключения, упр / QA", "[ДИ] Развитие digital витрин подключения, упр / QA (S)", "[Роуминг/VAS] Создание новых расширителей на полке роу / Тестирование"]}, {"week": "2026-07-20", "weekLabel": "20.07", "role": "FE", "teams": ["ДИ", "ДК", "Роуминг/VAS"], "tasks": ["[ДК] 5G турбо / FE", "[ДК] Коммерческий запуск сетей 5G / FE", "[ДИ] Развитие digital витрин подключения, упр / FE", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Фронтенд"]}, {"week": "2026-07-20", "weekLabel": "20.07", "role": "Дизайн", "teams": ["ДК", "Монетизация", "Роуминг/VAS"], "tasks": ["[ДК] Профиль Киноман / Настя (диз)", "[ДК] Коммерческий запуск сетей 5G / Настя (диз)", "[Монетизация] Новые автопроды / дизайн", "[Монетизация] Новая механика списания АП при смене тар / дизайн", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн"]}, {"week": "2026-07-20", "weekLabel": "20.07", "role": "SA", "teams": ["ДИ", "ДК", "Роуминг/VAS"], "tasks": ["[ДК] Профиль Киноман / Володя (SA)", "[ДК] Коммерческий запуск сетей 5G / Володя (SA)", "[ДИ] Повышение эффективности FMC (GM на клиен / SA", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Аналитика"]}, {"week": "2026-07-20", "weekLabel": "20.07", "role": "QA", "teams": ["ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Переезд из монги в ПК (финальные задачи) / тесты", "[Монетизация] Автоматизация информирования (IVR-REPRIC / тесты", "[Монетизация] Срок действия в Услугах / тесты", "[ДИ] Развитие digital витрин подключения, упр / QA", "[ДИ] Развитие digital витрин подключения, упр / QA (S)", "[Роуминг/VAS] Создание новых расширителей на полке роу / Тестирование"]}, {"week": "2026-07-27", "weekLabel": "27.07", "role": "FE", "teams": ["ДК", "Роуминг/VAS"], "tasks": ["[ДК] 5G турбо / FE", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Фронтенд"]}, {"week": "2026-07-27", "weekLabel": "27.07", "role": "QA", "teams": ["ДИ", "ДК", "Монетизация", "Роуминг/VAS"], "tasks": ["[ДК] 5G турбо / QA", "[ДК] Коммерческий запуск сетей 5G / QA", "[Монетизация] Оптимизация продактс (режим low-power) / тесты", "[ДИ] Развитие digital витрин подключения, упр / QA", "[Роуминг/VAS] Создание новых расширителей на полке роу / Тестирование", "[Роуминг/VAS] Новый метод подключения пакетов /bulk / Тестирование"]}, {"week": "2026-07-27", "weekLabel": "27.07", "role": "SA", "teams": ["ДК", "Роуминг/VAS"], "tasks": ["[ДК] Профиль Киноман / Володя (SA)", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Аналитика"]}, {"week": "2026-08-03", "weekLabel": "03.08", "role": "QA", "teams": ["ДИ", "ДК", "Роуминг/VAS"], "tasks": ["[ДК] 5G турбо / QA", "[ДИ] Развитие digital витрин подключения, упр / QA", "[Роуминг/VAS] Новый метод подключения пакетов /bulk / Тестирование", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Тестирование"]}, {"week": "2026-08-03", "weekLabel": "03.08", "role": "SA", "teams": ["ДК", "Роуминг/VAS"], "tasks": ["[ДК] Профиль Киноман / Володя (SA)", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Аналитика"]}, {"week": "2026-08-03", "weekLabel": "03.08", "role": "Дизайн", "teams": ["ДК", "Монетизация", "Роуминг/VAS"], "tasks": ["[ДК] Целевая схема возврата / Настя (диз)", "[Монетизация] Новая механика списания АП при смене тар / дизайн", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн"]}, {"week": "2026-08-03", "weekLabel": "03.08", "role": "BE", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[ДИ] Развитие digital витрин подключения, упр / BE", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Бэкенд"]}, {"week": "2026-08-03", "weekLabel": "03.08", "role": "FE", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[ДИ] Развитие digital витрин подключения, упр / FE", "[Роуминг/VAS] ABC-тест \"Безлимит на Яндекс\" / Фронтенд"]}, {"week": "2026-08-10", "weekLabel": "10.08", "role": "Дизайн", "teams": ["ДК", "Монетизация", "Роуминг/VAS"], "tasks": ["[ДК] Целевая схема возврата / Настя (диз)", "[Монетизация] Склеивание АП при подкл-и услуг / дизайн", "[Роуминг/VAS] Режим роуминга / Дизайн"]}, {"week": "2026-08-10", "weekLabel": "10.08", "role": "QA", "teams": ["ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Автоматизация информирования (IVR-REPRIC / тесты", "[ДИ] Развитие digital витрин подключения, упр / QA", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Тестирование", "[Роуминг/VAS] ABC-тест \"Безлимит на Яндекс\" / Тестирование"]}, {"week": "2026-08-10", "weekLabel": "10.08", "role": "BE", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[ДИ] Развитие digital витрин подключения, упр / BE", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Бэкенд"]}, {"week": "2026-08-17", "weekLabel": "17.08", "role": "FE", "teams": ["ДК", "Роуминг/VAS"], "tasks": ["[ДК] Профиль Киноман / FE", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Фронтенд"]}, {"week": "2026-08-17", "weekLabel": "17.08", "role": "Дизайн", "teams": ["ДК", "Роуминг/VAS"], "tasks": ["[ДК] Целевая схема возврата / Настя (диз)", "[Роуминг/VAS] Режим роуминга / Дизайн"]}, {"week": "2026-08-17", "weekLabel": "17.08", "role": "SA", "teams": ["ДИ", "ДК", "Роуминг/VAS"], "tasks": ["[ДК] Целевая схема возврата / Володя (SA)", "[ДИ] Повышение эффективности FMC (GM на клиен / SA", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Аналитика"]}, {"week": "2026-08-17", "weekLabel": "17.08", "role": "BE", "teams": ["ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / бэк", "[ДИ] Развитие digital витрин подключения, упр / BE", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Бэкенд"]}, {"week": "2026-08-17", "weekLabel": "17.08", "role": "QA", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[ДИ] Развитие digital витрин подключения, упр / QA", "[Роуминг/VAS] ABC-тест \"Безлимит на Яндекс\" / Тестирование"]}, {"week": "2026-08-24", "weekLabel": "24.08", "role": "QA", "teams": ["ДИ", "ДК", "Монетизация", "Роуминг/VAS"], "tasks": ["[ДК] Профиль Киноман / QA", "[Монетизация] Оптимизация продактс (режим low-power) / тесты", "[ДИ] Развитие digital витрин подключения, упр / QA", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Тестирование"]}, {"week": "2026-08-24", "weekLabel": "24.08", "role": "Дизайн", "teams": ["ДК", "Роуминг/VAS"], "tasks": ["[ДК] Целевая схема возврата / Настя (диз)", "[Роуминг/VAS] АБ-тест \"Сайт роуминга\" / Дизайн", "[Роуминг/VAS] Работа над конверсией с страниц стран и  / Дизайн"]}, {"week": "2026-08-24", "weekLabel": "24.08", "role": "SA", "teams": ["ДИ", "ДК", "Роуминг/VAS"], "tasks": ["[ДК] Целевая схема возврата / Володя (SA)", "[ДИ] Повышение эффективности FMC (GM на клиен / SA", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Аналитика", "[Роуминг/VAS] Режим роуминга / ADR"]}, {"week": "2026-08-24", "weekLabel": "24.08", "role": "BE", "teams": ["ДИ", "Монетизация"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / бэк", "[ДИ] Повышение эффективности FMC (GM на клиен / BE"]}, {"week": "2026-08-31", "weekLabel": "31.08", "role": "BE", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[ДИ] Повышение эффективности FMC (GM на клиен / BE", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Бэкенд"]}, {"week": "2026-08-31", "weekLabel": "31.08", "role": "SA", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[ДИ] Повышение эффективности FMC (GM на клиен / SA", "[Роуминг/VAS] Режим роуминга / ADR"]}, {"week": "2026-08-31", "weekLabel": "31.08", "role": "QA", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[ДИ] Развитие digital витрин подключения, упр / QA", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Тестирование"]}, {"week": "2026-09-07", "weekLabel": "07.09", "role": "QA", "teams": ["ДИ", "ДК", "Роуминг/VAS"], "tasks": ["[ДК] Профиль Киноман / QA", "[ДИ] Развитие digital витрин подключения, упр / QA", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Тестирование"]}, {"week": "2026-09-07", "weekLabel": "07.09", "role": "SA", "teams": ["ДИ", "ДК"], "tasks": ["[ДК] Целевая схема возврата / Володя (SA)", "[ДИ] Повышение эффективности FMC (GM на клиен / SA"]}, {"week": "2026-09-07", "weekLabel": "07.09", "role": "Дизайн", "teams": ["ДК", "Роуминг/VAS"], "tasks": ["[ДК] Страховка как отдельный продукт / Настя (диз)", "[Роуминг/VAS] Режим роуминга / Дизайн"]}, {"week": "2026-09-07", "weekLabel": "07.09", "role": "BE", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[ДИ] Повышение эффективности FMC (GM на клиен / BE", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Бэкенд"]}, {"week": "2026-09-07", "weekLabel": "07.09", "role": "FE", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[ДИ] Повышение эффективности FMC (GM на клиен / FE", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Фронтенд"]}, {"week": "2026-09-14", "weekLabel": "14.09", "role": "SA", "teams": ["ДИ", "ДК", "Роуминг/VAS"], "tasks": ["[ДК] Целевая схема возврата / Володя (SA)", "[ДИ] Повышение эффективности FMC (GM на клиен / SA", "[Роуминг/VAS] Режим роуминга / Аналитика"]}, {"week": "2026-09-14", "weekLabel": "14.09", "role": "FE", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[ДИ] Повышение эффективности FMC (GM на клиен / FE", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Фронтенд"]}, {"week": "2026-09-21", "weekLabel": "21.09", "role": "SA", "teams": ["ДИ", "ДК", "Роуминг/VAS"], "tasks": ["[ДК] Страховка как отдельный продукт / Володя (SA)", "[ДИ] Повышение эффективности FMC (GM на клиен / SA", "[Роуминг/VAS] Режим роуминга / Аналитика"]}, {"week": "2026-09-28", "weekLabel": "28.09", "role": "FE", "teams": ["ДК", "Роуминг/VAS"], "tasks": ["[ДК] Профиль Киноман / FE", "[Роуминг/VAS] Режим роуминга / Фронтенд"]}, {"week": "2026-09-28", "weekLabel": "28.09", "role": "QA", "teams": ["ДК", "Роуминг/VAS"], "tasks": ["[ДК] Профиль Киноман / QA", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Тестирование"]}, {"week": "2026-09-28", "weekLabel": "28.09", "role": "SA", "teams": ["ДИ", "ДК"], "tasks": ["[ДК] Целевая схема возврата / Володя (SA)", "[ДК] Страховка как отдельный продукт / Володя (SA)", "[ДИ] Повышение эффективности FMC (GM на клиен / SA"]}], "weekly": [{"week": "2026-06-29", "weekLabel": "29.06", "total": 11, "counts": {"ДК": 3, "Монетизация": 1, "ДИ": 4, "Роуминг/VAS": 3}, "activeTeams": ["ДИ", "ДК", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "Дизайн", "teams": ["ДК", "Роуминг/VAS"]}, {"role": "SA", "teams": ["ДК", "Монетизация"]}, {"role": "FE", "teams": ["ДИ", "Роуминг/VAS"]}]}, {"week": "2026-07-06", "weekLabel": "06.07", "total": 14, "counts": {"ДК": 2, "Монетизация": 3, "ДИ": 4, "Роуминг/VAS": 5}, "activeTeams": ["ДИ", "ДК", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "Дизайн", "teams": ["ДК", "Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "FE", "teams": ["ДИ", "Роуминг/VAS"]}, {"role": "QA", "teams": ["ДИ", "Роуминг/VAS"]}]}, {"week": "2026-07-13", "weekLabel": "13.07", "total": 19, "counts": {"ДК": 2, "Монетизация": 4, "ДИ": 4, "Роуминг/VAS": 9}, "activeTeams": ["ДИ", "ДК", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "SA", "teams": ["ДК", "Монетизация", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["ДК", "Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["ДИ", "Роуминг/VAS"]}, {"role": "FE", "teams": ["ДИ", "Роуминг/VAS"]}, {"role": "QA", "teams": ["ДИ", "Роуминг/VAS"]}]}, {"week": "2026-07-20", "weekLabel": "20.07", "total": 24, "counts": {"ДК": 8, "Монетизация": 6, "ДИ": 5, "Роуминг/VAS": 5}, "activeTeams": ["ДИ", "ДК", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "FE", "teams": ["ДИ", "ДК", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["ДК", "Монетизация", "Роуминг/VAS"]}, {"role": "SA", "teams": ["ДИ", "ДК", "Роуминг/VAS"]}, {"role": "QA", "teams": ["ДИ", "Монетизация", "Роуминг/VAS"]}]}, {"week": "2026-07-27", "weekLabel": "27.07", "total": 14, "counts": {"ДК": 5, "Монетизация": 1, "ДИ": 2, "Роуминг/VAS": 6}, "activeTeams": ["ДИ", "ДК", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "FE", "teams": ["ДК", "Роуминг/VAS"]}, {"role": "QA", "teams": ["ДИ", "ДК", "Монетизация", "Роуминг/VAS"]}, {"role": "SA", "teams": ["ДК", "Роуминг/VAS"]}]}, {"week": "2026-08-03", "weekLabel": "03.08", "total": 15, "counts": {"ДК": 4, "Монетизация": 2, "ДИ": 3, "Роуминг/VAS": 6}, "activeTeams": ["ДИ", "ДК", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "QA", "teams": ["ДИ", "ДК", "Роуминг/VAS"]}, {"role": "SA", "teams": ["ДК", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["ДК", "Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["ДИ", "Роуминг/VAS"]}, {"role": "FE", "teams": ["ДИ", "Роуминг/VAS"]}]}, {"week": "2026-08-10", "weekLabel": "10.08", "total": 12, "counts": {"ДК": 2, "Монетизация": 2, "ДИ": 3, "Роуминг/VAS": 5}, "activeTeams": ["ДИ", "ДК", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "Дизайн", "teams": ["ДК", "Монетизация", "Роуминг/VAS"]}, {"role": "QA", "teams": ["ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["ДИ", "Роуминг/VAS"]}]}, {"week": "2026-08-17", "weekLabel": "17.08", "total": 14, "counts": {"ДК": 4, "Монетизация": 2, "ДИ": 3, "Роуминг/VAS": 5}, "activeTeams": ["ДИ", "ДК", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "FE", "teams": ["ДК", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["ДК", "Роуминг/VAS"]}, {"role": "SA", "teams": ["ДИ", "ДК", "Роуминг/VAS"]}, {"role": "BE", "teams": ["ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "QA", "teams": ["ДИ", "Роуминг/VAS"]}]}, {"week": "2026-08-24", "weekLabel": "24.08", "total": 15, "counts": {"ДК": 4, "Монетизация": 2, "ДИ": 3, "Роуминг/VAS": 6}, "activeTeams": ["ДИ", "ДК", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "QA", "teams": ["ДИ", "ДК", "Монетизация", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["ДК", "Роуминг/VAS"]}, {"role": "SA", "teams": ["ДИ", "ДК", "Роуминг/VAS"]}, {"role": "BE", "teams": ["ДИ", "Монетизация"]}]}, {"week": "2026-08-31", "weekLabel": "31.08", "total": 11, "counts": {"ДК": 0, "Монетизация": 1, "ДИ": 4, "Роуминг/VAS": 6}, "activeTeams": ["ДИ", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "BE", "teams": ["ДИ", "Роуминг/VAS"]}, {"role": "SA", "teams": ["ДИ", "Роуминг/VAS"]}, {"role": "QA", "teams": ["ДИ", "Роуминг/VAS"]}]}, {"week": "2026-09-07", "weekLabel": "07.09", "total": 12, "counts": {"ДК": 3, "Монетизация": 0, "ДИ": 4, "Роуминг/VAS": 5}, "activeTeams": ["ДИ", "ДК", "Роуминг/VAS"], "conflicts": [{"role": "QA", "teams": ["ДИ", "ДК", "Роуминг/VAS"]}, {"role": "SA", "teams": ["ДИ", "ДК"]}, {"role": "Дизайн", "teams": ["ДК", "Роуминг/VAS"]}, {"role": "BE", "teams": ["ДИ", "Роуминг/VAS"]}, {"role": "FE", "teams": ["ДИ", "Роуминг/VAS"]}]}, {"week": "2026-09-14", "weekLabel": "14.09", "total": 10, "counts": {"ДК": 2, "Монетизация": 1, "ДИ": 3, "Роуминг/VAS": 4}, "activeTeams": ["ДИ", "ДК", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "SA", "teams": ["ДИ", "ДК", "Роуминг/VAS"]}, {"role": "FE", "teams": ["ДИ", "Роуминг/VAS"]}]}, {"week": "2026-09-21", "weekLabel": "21.09", "total": 4, "counts": {"ДК": 1, "Монетизация": 0, "ДИ": 1, "Роуминг/VAS": 2}, "activeTeams": ["ДИ", "ДК", "Роуминг/VAS"], "conflicts": [{"role": "SA", "teams": ["ДИ", "ДК", "Роуминг/VAS"]}]}, {"week": "2026-09-28", "weekLabel": "28.09", "total": 10, "counts": {"ДК": 5, "Монетизация": 1, "ДИ": 1, "Роуминг/VAS": 3}, "activeTeams": ["ДИ", "ДК", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "FE", "teams": ["ДК", "Роуминг/VAS"]}, {"role": "QA", "teams": ["ДК", "Роуминг/VAS"]}, {"role": "SA", "teams": ["ДИ", "ДК"]}]}, {"week": "2026-10-05", "weekLabel": "05.10", "total": 3, "counts": {"ДК": 1, "Монетизация": 0, "ДИ": 0, "Роуминг/VAS": 2}, "activeTeams": ["ДК", "Роуминг/VAS"], "conflicts": []}]};
+      document.getElementById('generated').textContent = 'обновлено ' + new Date(DATA.generated).toLocaleString('ru-RU');
+      TEAM_KEYS.forEach(t => activeTeams.add(t));
+      initFilters();
+      renderStats();
+      renderAll();
+    }
+
+    function initFilters() {
+      const roles = [...new Set(DATA.entries.map(e => e.role))].sort();
+      const sel = document.getElementById('roleFilter');
+      roles.forEach(r => { const o = document.createElement('option'); o.value = r; o.textContent = r; sel.appendChild(o); });
+
+      const chips = document.getElementById('teamChips');
+      TEAM_KEYS.forEach(key => {
+        const cfg = DATA.teams[key];
+        const c = document.createElement('button');
+        c.className = 'chip on';
+        c.dataset.team = key;
+        c.textContent = cfg.full;
+        c.style.background = cfg.color;
+        c.onclick = () => {
+          if (activeTeams.has(key)) { activeTeams.delete(key); c.classList.remove('on'); c.style.background = ''; }
+          else { activeTeams.add(key); c.classList.add('on'); c.style.background = cfg.color; }
+          renderAll();
+        };
+        chips.appendChild(c);
+      });
+
+      document.getElementById('search').oninput = renderAll;
+      document.getElementById('roleFilter').onchange = renderAll;
+
+      document.querySelectorAll('.tab').forEach(btn => {
+        btn.onclick = () => {
+          document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+        };
+      });
+    }
+
+    function renderStats() {
+      const el = document.getElementById('stats');
+      const active = DATA.entries.filter(e => Object.keys(e.weeks).length > 0);
+      el.innerHTML = [
+        ['Задач/ресурсов', active.length],
+        ['Пересечений', DATA.conflicts.length],
+        ['Недель', DATA.weeks.length],
+        ['Команд', TEAM_KEYS.length],
+      ].map(([l,v]) => `<div class="stat"><div class="val">${v}</div><div class="lbl">${l}</div></div>`).join('');
+    }
+
+    function filterEntries() {
+      const q = document.getElementById('search').value.toLowerCase();
+      const role = document.getElementById('roleFilter').value;
+      return DATA.entries.filter(e => {
+        if (!activeTeams.has(e.team)) return false;
+        if (role && e.role !== role) return false;
+        if (q && !(`${e.task} ${e.resource} ${e.ticket} ${e.role}`.toLowerCase().includes(q))) return false;
+        return Object.keys(e.weeks).length > 0;
+      });
+    }
+
+    function isConflictWeekRole(weekIso, role) {
+      return DATA.conflicts.some(c => c.week === weekIso && c.role === role);
+    }
+
+    function teamBadge(team) {
+      const cfg = DATA.teams[team];
+      return `<span class="team-badge" style="background:${cfg.bg};color:${cfg.color}">${cfg.full}</span>`;
+    }
+
+    function renderGantt() {
+      const entries = filterEntries();
+      const thead = document.querySelector('#ganttTable thead');
+      const tbody = document.querySelector('#ganttTable tbody');
+      const weekHeaders = DATA.weeks.map(w => `<th>${w.label}</th>`).join('');
+      thead.innerHTML = `<tr><th data-col="team">Команда</th><th data-col="task">Задача</th><th data-col="resource">Ресурс</th><th data-col="role">Роль</th><th data-col="ticket">Тикет</th>${weekHeaders}</tr>`;
+
+      if (!entries.length) {
+        tbody.innerHTML = `<tr><td colspan="${5 + DATA.weeks.length}" class="empty">Нет данных по фильтрам</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = entries.map(e => {
+        const cfg = DATA.teams[e.team];
+        const cells = DATA.weeks.map(w => {
+          const val = e.weeks[w.iso];
+          if (!val) return '<td class="week-cell"></td>';
+          const cls = isConflictWeekRole(w.iso, e.role) ? 'week-cell filled conflict' : 'week-cell filled';
+          const bg = isConflictWeekRole(w.iso, e.role) ? '' : `background:${cfg.color};color:#fff;`;
+          return `<td class="${cls}" style="${bg}" title="${val}">${val.length > 6 ? val.slice(0,5)+'…' : val}</td>`;
+        }).join('');
+        return `<tr>
+          <td>${teamBadge(e.team)}</td>
+          <td>${esc(e.task)}</td>
+          <td>${esc(e.resource)}</td>
+          <td>${esc(e.role)}</td>
+          <td>${esc(e.ticket)}</td>${cells}</tr>`;
+      }).join('');
+
+      bindSort('#ganttTable', entries, renderGantt);
+    }
+
+    function renderConflicts() {
+      const q = document.getElementById('search').value.toLowerCase();
+      const role = document.getElementById('roleFilter').value;
+      let rows = DATA.conflicts.filter(c => {
+        if (role && c.role !== role) return false;
+        if (!c.teams.some(t => { const k = Object.entries(DATA.teams).find(([_,v]) => v.full === t)?.[0]; return k && activeTeams.has(k); })) return false;
+        if (q && !(c.role + c.teams.join() + c.tasks.join()).toLowerCase().includes(q)) return false;
+        return true;
+      });
+
+      const thead = document.querySelector('#conflictsTable thead');
+      const tbody = document.querySelector('#conflictsTable tbody');
+      thead.innerHTML = '<tr><th>Неделя</th><th>Роль</th><th>Команды</th><th>Задачи</th></tr>';
+
+      if (!rows.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty">Нет пересечений по фильтрам</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = rows.map(c => `<tr class="conflict-row">
+        <td>${c.weekLabel}</td>
+        <td><strong>${esc(c.role)}</strong></td>
+        <td>${c.teams.map(t => `<span class="team-badge" style="background:#ffc7ce;color:#9c0006;margin:1px">${esc(t)}</span>`).join(' ')}</td>
+        <td><div class="conflict-tasks">${c.tasks.slice(0,5).map(esc).join('<br>')}${c.tasks.length > 5 ? `<br>… +${c.tasks.length-5}` : ''}</div></td>
+      </tr>`).join('');
+    }
+
+    function renderWeekly() {
+      const thead = document.querySelector('#weeklyTable thead');
+      const tbody = document.querySelector('#weeklyTable tbody');
+      thead.innerHTML = '<tr><th>Неделя</th><th>Всего</th><th>ДК</th><th>Монет.</th><th>ДИ</th><th>Роуминг</th><th>Команды</th><th>Конфликты</th></tr>';
+
+      tbody.innerHTML = DATA.weekly.map(w => {
+        const hasConflict = w.conflicts.length > 0;
+        const multiTeam = w.activeTeams.length >= 2;
+        const cls = hasConflict ? 'conflict-row' : (multiTeam ? 'multi-row' : '');
+        const conflicts = w.conflicts.map(c => `${c.role} (${c.teams.join('+')})`).join('; ');
+        return `<tr class="${cls}">
+          <td>${w.weekLabel}</td>
+          <td><strong>${w.total}</strong></td>
+          <td>${w.counts['ДК']}</td>
+          <td>${w.counts['Монетизация']}</td>
+          <td>${w.counts['ДИ']}</td>
+          <td>${w.counts['Роуминг/VAS']}</td>
+          <td>${w.activeTeams.join(', ')}</td>
+          <td style="color:var(--danger)">${esc(conflicts)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function renderAll() {
+      renderGantt();
+      renderConflicts();
+      renderWeekly();
+    }
+
+    function esc(s) {
+      if (!s) return '';
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function bindSort(selector, data, rerender) {
+      document.querySelectorAll(`${selector} th[data-col]`).forEach(th => {
+        th.onclick = () => {
+          const col = th.dataset.col;
+          if (sortState.col === col) sortState.asc = !sortState.asc;
+          else { sortState.col = col; sortState.asc = true; }
+          data.sort((a, b) => {
+            const av = (a[col] || a.team || '').toString();
+            const bv = (b[col] || b.team || '').toString();
+            return sortState.asc ? av.localeCompare(bv, 'ru') : bv.localeCompare(av, 'ru');
+          });
+          rerender();
+        };
+      });
+    }
+
+    loadData().catch(err => {
+      document.querySelector('.container').innerHTML = `<div class="empty" style="padding:4rem">
+        <h2>Не удалось загрузить data.json</h2>
+        <p style="margin-top:1rem;color:var(--muted)">Запустите локальный сервер в папке interactive:<br><code>python3 -m http.server 8080</code></p>
+        <p style="margin-top:.5rem;color:var(--muted)">${err.message}</p>
+      </div>`;
+    });
+  </script>
+</body>
+</html>
