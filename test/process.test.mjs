@@ -66,6 +66,7 @@ test('h2-2026 timeline processes with expected teams and week span', () => {
   const raw = JSON.parse(readFileSync(new URL('../data-h2-2026.json', import.meta.url), 'utf8'));
   const processed = processTimeline(raw);
   assert.deepEqual(Object.keys(processed.teams), ['Монетизация', 'ДИ', 'ДГП', 'МегаИнтернет', 'Тарифы']);
+  assert.equal(processed.teams.Тарифы.full, 'Тарифы');
   assert.equal(processed.weeks[0].iso, '2026-06-29');
   assert.ok(processed.weeks.at(-1).iso >= '2026-12-01');
   assert.ok(processed.weeks.at(-1).iso <= '2026-12-28');
@@ -76,4 +77,19 @@ test('h2-2026 timeline processes with expected teams and week span', () => {
   for (const role of ['Дизайн', 'SA', 'BE', 'FE', 'QA']) {
     assert.ok(roles.has(role), `missing role ${role}`);
   }
+});
+
+test('published catalog has current teams including Тарифы and no Роуминг/VAS', () => {
+  const catalog = JSON.parse(readFileSync(new URL('../timelines.json', import.meta.url), 'utf8'));
+  assert.equal(catalog.default, 'h2-2026');
+  assert.equal(catalog.timelines.length, 1);
+  assert.equal(catalog.timelines[0].file, 'data-h2-2026.json');
+  const labels = JSON.stringify(catalog);
+  assert.equal(/роуминг|VAS|Ева/i.test(labels), false);
+
+  const raw = JSON.parse(readFileSync(new URL('../data-h2-2026.json', import.meta.url), 'utf8'));
+  const names = [...Object.keys(raw.teams), ...Object.values(raw.teams).map((team) => team.full)];
+  assert.ok(names.includes('Тарифы'));
+  assert.equal(names.some((name) => /роуминг|VAS/i.test(name)), false);
+  assert.equal(names.some((name) => /^Ева$/i.test(name)), false);
 });
