@@ -42,6 +42,19 @@ PERSON_ROLES = [
     (r"мерзликин", "SA"),
 ]
 
+RESOURCE_CANONICAL = [
+    (r"шлот?гауэр", "Шлотгауэр Иван"),
+    (r"касенко|косенко", "Косенко Данил"),
+    (r"савлук", "Савлук Богдан"),
+    (r"успенский", "Успенский Павел"),
+    (r"мерзликин", "Мерзликин Антон"),
+    (r"роган", "Роган Татьяна"),
+    (r"судариков", "Судариков Алексей"),
+    (r"колотыгин", "Колотыгин Никита"),
+    (r"жогина", "Жогина Екатерина"),
+    (r"папенко", "Папенко Руслан"),
+]
+
 
 def monday_of(d: date) -> date:
     return d - timedelta(days=d.weekday())
@@ -125,6 +138,17 @@ def role_for_person(resource: str, task_name: str = "") -> str:
         if re.search(pattern, low, re.I):
             return role
     return normalize_role(task_name) or normalize_role(resource) or "Другое"
+
+
+def canonical_resource(resource: str) -> str:
+    text = re.sub(r"\s+", " ", (resource or "").strip())
+    if not text:
+        return text
+    low = text.lower().replace("ё", "е")
+    for pattern, name in RESOURCE_CANONICAL:
+        if re.search(pattern, low, re.I):
+            return name
+    return text
 
 
 def parse_role_and_name(label: str) -> tuple[str, str]:
@@ -554,7 +578,7 @@ def parse_tariffs_cko() -> list[dict]:
             res = assignment.getResource()
             if res and res.getName():
                 resources.append(str(res.getName()))
-        resource = resources[0] if resources else "ЦКО"
+        resource = canonical_resource(resources[0] if resources else "ЦКО")
         role = role_for_person(resource, name)
         feature = parent_name(task)
         bucket = defaultdict(list)

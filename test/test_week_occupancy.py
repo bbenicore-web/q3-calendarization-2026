@@ -59,6 +59,21 @@ class WeekOccupancyTest(unittest.TestCase):
         self.assertEqual(mod.role_for_person("Мерзликин", "ЦКО аналитика"), "SA")
         self.assertEqual(mod.role_for_person("Мерзликин", "Флоу подключения расширителей для фиксы"), "SA")
 
+    def test_canonical_tariff_resource_names(self):
+        self.assertEqual(mod.canonical_resource("Шлогауэр"), "Шлотгауэр Иван")
+        self.assertEqual(mod.canonical_resource("Шлотгауэр Иван Александрович"), "Шлотгауэр Иван")
+        self.assertEqual(mod.canonical_resource("Касенко"), "Косенко Данил")
+        self.assertEqual(mod.canonical_resource("Косенко"), "Косенко Данил")
+        self.assertEqual(mod.canonical_resource("САвлук"), "Савлук Богдан")
+        self.assertEqual(mod.canonical_resource("Жогина"), "Жогина Екатерина")
+        self.assertEqual(mod.canonical_resource("Жогина Екатерина"), "Жогина Екатерина")
+        self.assertEqual(mod.canonical_resource("Мерзликин"), "Мерзликин Антон")
+        self.assertEqual(mod.canonical_resource("Успенский"), "Успенский Павел")
+        self.assertEqual(mod.canonical_resource("Роган"), "Роган Татьяна")
+        self.assertEqual(mod.canonical_resource("Судариков"), "Судариков Алексей")
+        self.assertEqual(mod.canonical_resource("Колотыгин"), "Колотыгин Никита")
+        self.assertEqual(mod.canonical_resource("Потребность test ЦКО"), "Потребность test ЦКО")
+
 
 if __name__ == "__main__":
     unittest.main()

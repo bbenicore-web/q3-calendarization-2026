@@ -99,7 +99,7 @@ test('Tariffs people keep QA / PO / SA specialties', () => {
   const rows = raw.entries.filter((entry) => entry.team === 'Тарифы');
   const byPerson = (needle) => rows.filter((entry) => (entry.resource || '').toLowerCase().includes(needle));
 
-  const shlotgauer = byPerson('шлог');
+  const shlotgauer = byPerson('шлотгауэр');
   assert.ok(shlotgauer.length > 0);
   assert.ok(shlotgauer.every((entry) => entry.role === 'QA'));
 
@@ -110,4 +110,12 @@ test('Tariffs people keep QA / PO / SA specialties', () => {
   const merzlikin = byPerson('мерзликин');
   assert.ok(merzlikin.length > 0);
   assert.ok(merzlikin.every((entry) => entry.role === 'SA'));
+  assert.ok(merzlikin.every((entry) => entry.resource === 'Мерзликин Антон'));
+
+  const names = [...new Set(rows.map((entry) => entry.resource))];
+  assert.equal(names.some((name) => name === 'Шлогауэр' || name === 'Касенко' || name === 'САвлук'), false);
+  assert.ok(names.includes('Шлотгауэр Иван'));
+  assert.ok(names.includes('Косенко Данил'));
+  assert.ok(names.includes('Савлук Богдан'));
+  assert.ok(names.includes('Жогина Екатерина'));
 });
