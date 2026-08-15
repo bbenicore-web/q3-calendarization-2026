@@ -139,28 +139,51 @@ def extract_ticket(text: str) -> str:
     return match.group(1).upper().replace("B2CPROD", "B2CPROD") if match else ""
 
 
+def occupancy_cell(raw) -> str:
+    if raw is None or raw == "":
+        return ""
+    if isinstance(raw, bool):
+        return "1" if raw else ""
+    if isinstance(raw, (int, float)):
+        n = int(raw)
+        return str(n) if n > 0 else ""
+    text = str(raw).strip()
+    if not text:
+        return ""
+    if "отпуск" in text.lower():
+        return "отпуск"
+    match = re.match(r"^(\d+)", text)
+    if match:
+        n = int(match.group(1))
+        return str(n) if n > 0 else ""
+    return "1"
+
+
 def add_day(bucket: dict, day: date, value: str):
+    if day.weekday() >= 5:
+        return
     week = iso(monday_of(day))
-    text = value.strip() if value else ""
-    prev = bucket.get(week, [])
-    if text and text not in prev:
-        prev.append(text)
-    elif not prev:
-        prev.append("")
-    bucket[week] = prev
+    slot = bucket.get(week)
+    if not isinstance(slot, dict):
+        slot = {}
+        bucket[week] = slot
+    slot[iso(day)] = value or ""
 
 
 def finalize_weeks(bucket: dict) -> dict:
     out = {}
-    for week, parts in bucket.items():
-        labels = [p for p in parts if p and p != "•"]
-        if not labels:
-            out[week] = "•"
-            continue
-        if all("отпуск" in p.lower() for p in labels):
-            out[week] = "отпуск"
+    for week, payload in bucket.items():
+        if isinstance(payload, dict):
+            values = list(payload.values())
         else:
-            out[week] = " / ".join(labels[:3])[:80]
+            values = list(payload or [])
+        if not values:
+            continue
+        work = sum(1 for value in values if "отпуск" not in (value or "").lower())
+        if work:
+            out[week] = str(work)
+        else:
+            out[week] = "отпуск"
     return out
 
 
@@ -351,7 +374,7 @@ def parse_megainternet() -> list[dict]:
             continue
         weeks = {}
         for col, week in col_week.items():
-            val = cell_value(ws.cell(r, col))
+            val = occupancy_cell(ws.cell(r, col).value)
             if not val:
                 continue
             weeks[week] = val

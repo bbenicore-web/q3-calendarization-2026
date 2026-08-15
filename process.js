@@ -24,6 +24,15 @@ export function isVacation(value) {
   return String(value || '').toLowerCase().includes('отпуск');
 }
 
+export function weekCellLabel(value) {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  if (isVacation(text)) return 'отпуск';
+  const match = text.match(/^(\d+)/);
+  if (match) return match[1];
+  return text;
+}
+
 export function conflictTaskLabel(teams, entry) {
   const full = teamFull(teams, entry.team);
   return `[${full}] ${truncateTask(entry.task || '')} / ${entry.resource || ''}`;

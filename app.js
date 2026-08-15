@@ -1,4 +1,4 @@
-import { processTimeline, isVacation, roleMatrix, teamFull } from './process.js';
+import { processTimeline, isVacation, roleMatrix, teamFull, weekCellLabel } from './process.js';
 
 const state = {
   catalog: [],
@@ -277,6 +277,7 @@ function renderGantt() {
       const value = entry.weeks[week.iso];
       const currentCls = week.iso === current ? 'current-week' : '';
       if (!value) return `<td class="week-cell ${currentCls}"></td>`;
+      const shown = weekCellLabel(value);
       const vacation = isVacation(value);
       const conflict = isConflictWeekRole(week.iso, entry.role);
       const cls = [
@@ -287,8 +288,8 @@ function renderGantt() {
         currentCls,
       ].filter(Boolean).join(' ');
       const bg = vacation || conflict ? '' : `background:${cfg.color};color:#fff;`;
-      const shown = value.length > 8 ? `${value.slice(0, 7)}…` : value;
-      return `<td class="${cls}" style="${bg}" title="${esc(value)}">${esc(shown)}</td>`;
+      const title = vacation ? 'отпуск' : `${shown} дн.`;
+      return `<td class="${cls}" style="${bg}" title="${esc(title)}">${esc(shown)}</td>`;
     }).join('');
     return `<tr>
       <td class="sticky-col col-team">${teamBadge(entry.team)}</td>
