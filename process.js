@@ -33,6 +33,108 @@ export function weekCellLabel(value) {
   return text;
 }
 
+export const WORK_DAYS_PER_MONTH = 22;
+
+export function occupancyDays(value) {
+  if (!value) return 0;
+  if (isVacation(value)) return 0;
+  const parsed = Number(weekCellLabel(value));
+  return Number.isFinite(parsed) ? parsed : 1;
+}
+
+export function weekMonthKey(isoMonday) {
+  if (!isoMonday || !/^\d{4}-\d{2}-\d{2}$/.test(isoMonday)) return '';
+  const date = new Date(`${isoMonday}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 2);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+export function formatMonthLabel(monthKey) {
+  const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+  const [, month] = String(monthKey).split('-');
+  return months[Number(month) - 1] || monthKey;
+}
+
+function isDemandPlaceholder(resource) {
+  return /потребность/i.test(String(resource || ''));
+}
+
+function balanceStatus(balance) {
+  if (balance < 0) return 'дефицит';
+  if (balance > 0) return 'профицит';
+  return 'норма';
+}
+
+export function rolePersonDays(data = {}) {
+  const weeks = normalizeWeeks(data.weeks, data.entries);
+  const allowedWeeks = new Set(weeks.map((week) => week.iso));
+  const entries = Array.isArray(data.entries) ? data.entries : [];
+  const months = [...new Set(weeks.map((week) => weekMonthKey(week.iso)).filter(Boolean))].sort();
+  const byRole = new Map();
+
+  const ensure = (role) => {
+    if (!byRole.has(role)) {
+      byRole.set(role, { people: new Map(), demand: new Map() });
+    }
+    return byRole.get(role);
+  };
+
+  for (const entry of entries) {
+    const role = entry.role || '';
+    if (!role || role === 'Отпуск') continue;
+    const bucket = ensure(role);
+    const personKey = `${entry.team || ''}\0${entry.resource || ''}`;
+    const placeholder = isDemandPlaceholder(entry.resource);
+    for (const [iso, value] of Object.entries(entry.weeks || {})) {
+      if (!value) continue;
+      if (allowedWeeks.size && !allowedWeeks.has(iso)) continue;
+      const month = weekMonthKey(iso);
+      if (!month) continue;
+      const days = occupancyDays(value);
+      bucket.demand.set(month, (bucket.demand.get(month) || 0) + days);
+      if (!placeholder) {
+        if (!bucket.people.has(personKey)) bucket.people.set(personKey, new Set());
+        bucket.people.get(personKey).add(month);
+      }
+    }
+  }
+
+  const monthStats = (demandMap, peopleMap) => {
+    const out = {};
+    for (const month of months) {
+      const days = demandMap.get(month) || 0;
+      let people = 0;
+      for (const active of peopleMap.values()) {
+        if (active.has(month)) people += 1;
+      }
+      const capacity = people * WORK_DAYS_PER_MONTH;
+      const balance = capacity - days;
+      out[month] = { days, people, capacity, balance, status: balanceStatus(balance) };
+    }
+    return out;
+  };
+
+  const rows = [...byRole.keys()].sort((a, b) => a.localeCompare(b, 'ru')).map((role) => {
+    const bucket = byRole.get(role);
+    const monthMap = monthStats(bucket.demand, bucket.people);
+    const days = Object.values(monthMap).reduce((sum, item) => sum + item.days, 0);
+    const capacity = Object.values(monthMap).reduce((sum, item) => sum + item.capacity, 0);
+    const balance = capacity - days;
+    return {
+      role,
+      people: bucket.people.size,
+      days,
+      capacity,
+      balance,
+      status: balanceStatus(balance),
+      load: capacity ? days / capacity : (days ? Infinity : 0),
+      months: monthMap,
+    };
+  });
+
+  return { months, rows, workDaysPerMonth: WORK_DAYS_PER_MONTH };
+}
+
 export function conflictTaskLabel(teams, entry) {
   const full = teamFull(teams, entry.team);
   return `[${full}] ${truncateTask(entry.task || '')} / ${entry.resource || ''}`;

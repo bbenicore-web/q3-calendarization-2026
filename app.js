@@ -1,4 +1,4 @@
-import { processTimeline, isVacation, roleMatrix, teamFull, weekCellLabel } from './process.js';
+import { processTimeline, isVacation, roleMatrix, teamFull, weekCellLabel, rolePersonDays, formatMonthLabel, WORK_DAYS_PER_MONTH } from './process.js';
 
 const state = {
   catalog: [],
@@ -195,6 +195,31 @@ function isConflictWeekRole(weekIso, role) {
   return state.data.conflicts.some((conflict) => conflict.week === weekIso && conflict.role === role);
 }
 
+function visibleCapacity() {
+  const weeks = state.week ? state.data.weeks.filter((week) => week.iso === state.week) : state.data.weeks;
+  const entries = state.data.entries.filter((entry) => {
+    if (!state.activeTeams.has(entry.team)) return false;
+    if (state.role && entry.role !== state.role) return false;
+    if (state.type && entry.type !== state.type) return false;
+    if (state.query) {
+      const hay = `${entry.task} ${entry.resource} ${entry.ticket} ${entry.role} ${entry.type}`.toLowerCase();
+      if (!hay.includes(state.query)) return false;
+    }
+    return Object.keys(entry.weeks || {}).length > 0;
+  });
+  return rolePersonDays({ weeks, entries });
+}
+
+function signedDays(value) {
+  if (value > 0) return `+${value}`;
+  return String(value);
+}
+
+function formatLoad(load) {
+  if (!Number.isFinite(load)) return '∞';
+  return `${Math.round(load * 100)}%`;
+}
+
 function renderStats() {
   const active = state.data.entries.filter((entry) => Object.keys(entry.weeks || {}).length > 0);
   const visible = filterEntries();
@@ -203,6 +228,7 @@ function renderStats() {
     ['Пересечений', state.data.conflicts.length, 'роль × неделя'],
     ['Недель', state.data.weeks.length, state.data.weeks[0]?.label + ' — ' + state.data.weeks.at(-1)?.label],
     ['Команд', state.teamKeys.length, 'в выбранном таймлайне'],
+    ['Ролей в дефиците', visibleCapacity().rows.filter((row) => row.balance < 0).length, `норма ${WORK_DAYS_PER_MONTH} дн./чел. в месяц`],
   ].map(([label, value, hint]) => `
     <article class="stat">
       <div class="val">${esc(value)}</div>
@@ -378,6 +404,46 @@ function renderRoles() {
   }).join('');
 }
 
+function renderCapacity() {
+  const data = visibleCapacity();
+  const note = document.getElementById('capacityNote');
+  note.textContent = `Норма ${WORK_DAYS_PER_MONTH} рабочих дня на человека в месяц. Баланс = норма − человеко-дни. «Потребность …» идёт в спрос, но не в численность.`;
+  const thead = document.querySelector('#capacityTable thead');
+  const tbody = document.querySelector('#capacityTable tbody');
+  const monthHeaders = data.months.map((month) => `<th>${esc(formatMonthLabel(month))}</th>`).join('');
+  thead.innerHTML = `<tr>
+    <th>Специальность</th>
+    <th>Люди</th>
+    <th>Чел.-дни</th>
+    <th>Норма</th>
+    <th>Баланс</th>
+    <th>Загрузка</th>
+    ${monthHeaders}
+  </tr>`;
+  if (!data.rows.length) {
+    tbody.innerHTML = `<tr><td colspan="${6 + data.months.length}" class="empty">Нет данных по фильтрам</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.rows.map((row) => {
+    const monthCells = data.months.map((month) => {
+      const cell = row.months[month];
+      const cls = cell.balance < 0 ? 'deficit' : (cell.days ? 'surplus' : '');
+      const title = `${cell.days} чел.-дн. · ${cell.people} чел. · норма ${cell.capacity} · ${signedDays(cell.balance)}`;
+      return `<td class="${cls}" title="${esc(title)}">${cell.days ? `${cell.days} / ${signedDays(cell.balance)}` : '—'}</td>`;
+    }).join('');
+    const rowCls = row.balance < 0 ? 'deficit-row' : '';
+    return `<tr class="${rowCls}">
+      <td><strong>${esc(row.role)}</strong></td>
+      <td>${row.people}</td>
+      <td>${row.days}</td>
+      <td>${row.capacity}</td>
+      <td class="${row.balance < 0 ? 'deficit' : 'surplus'}"><strong>${esc(signedDays(row.balance))}</strong> ${esc(row.status)}</td>
+      <td>${esc(formatLoad(row.load))}</td>
+      ${monthCells}
+    </tr>`;
+  }).join('');
+}
+
 function renderAll() {
   renderTimelineSwitch();
   renderStats();
@@ -386,6 +452,7 @@ function renderAll() {
   renderConflicts();
   renderWeekly();
   renderRoles();
+  renderCapacity();
 }
 
 function bindTabs() {

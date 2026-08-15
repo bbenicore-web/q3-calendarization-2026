@@ -230,6 +230,14 @@ th.sticky-col { z-index: 4; }
   white-space: nowrap;
 }
 .conflict-row td { background: var(--danger-bg) !important; }
+.deficit-row td { background: var(--danger-bg); }
+td.deficit, .deficit { color: var(--danger); font-weight: 700; }
+td.surplus, .surplus { color: var(--accent); }
+.capacity-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 0 0 0.65rem;
+}
 .multi-row td { background: var(--warn-bg) !important; }
 .week-cell { text-align: center; min-width: 52px; font-size: 0.7rem; font-weight: 700; }
 .week-cell.filled { color: #fff; }

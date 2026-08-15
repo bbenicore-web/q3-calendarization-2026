@@ -37,6 +37,7 @@
         <button class="tab" data-tab="conflicts">Пересечения</button>
         <button class="tab" data-tab="weekly">Сводка</button>
         <button class="tab" data-tab="roles">Роли × недели</button>
+        <button class="tab" data-tab="capacity">Человеко-дни</button>
       </nav>
 
       <section class="toolbar" id="toolbar">
@@ -52,6 +53,7 @@
         <span><i class="dot current"></i> Текущая неделя</span>
         <span><i class="dot multi"></i> 2+ команд активны</span>
         <span>Число в клетке — дни занятости на неделе</span>
+        <span>Норма ёмкости — 22 раб. дня на человека в месяц</span>
       </div>
 
       <section class="panel active" id="panel-gantt">
@@ -65,6 +67,10 @@
       </section>
       <section class="panel" id="panel-roles">
         <div class="table-wrap"><table id="rolesTable"><thead></thead><tbody></tbody></table></div>
+      </section>
+      <section class="panel" id="panel-capacity">
+        <div class="capacity-note" id="capacityNote"></div>
+        <div class="table-wrap"><table id="capacityTable"><thead></thead><tbody></tbody></table></div>
       </section>
     </main>
 

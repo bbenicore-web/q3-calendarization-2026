@@ -237,6 +237,14 @@ th.sticky-col { z-index: 4; }
   white-space: nowrap;
 }
 .conflict-row td { background: var(--danger-bg) !important; }
+.deficit-row td { background: var(--danger-bg); }
+td.deficit, .deficit { color: var(--danger); font-weight: 700; }
+td.surplus, .surplus { color: var(--accent); }
+.capacity-note {
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin: 0 0 0.65rem;
+}
 .multi-row td { background: var(--warn-bg) !important; }
 .week-cell { text-align: center; min-width: 52px; font-size: 0.7rem; font-weight: 700; }
 .week-cell.filled { color: #fff; }
@@ -316,6 +324,7 @@ footer code { color: var(--accent); }
         <button class="tab" data-tab="conflicts">Пересечения</button>
         <button class="tab" data-tab="weekly">Сводка</button>
         <button class="tab" data-tab="roles">Роли × недели</button>
+        <button class="tab" data-tab="capacity">Человеко-дни</button>
       </nav>
 
       <section class="toolbar" id="toolbar">
@@ -331,6 +340,7 @@ footer code { color: var(--accent); }
         <span><i class="dot current"></i> Текущая неделя</span>
         <span><i class="dot multi"></i> 2+ команд активны</span>
         <span>Число в клетке — дни занятости на неделе</span>
+        <span>Норма ёмкости — 22 раб. дня на человека в месяц</span>
       </div>
 
       <section class="panel active" id="panel-gantt">
@@ -344,6 +354,10 @@ footer code { color: var(--accent); }
       </section>
       <section class="panel" id="panel-roles">
         <div class="table-wrap"><table id="rolesTable"><thead></thead><tbody></tbody></table></div>
+      </section>
+      <section class="panel" id="panel-capacity">
+        <div class="capacity-note" id="capacityNote"></div>
+        <div class="table-wrap"><table id="capacityTable"><thead></thead><tbody></tbody></table></div>
       </section>
     </main>
 
@@ -389,6 +403,108 @@ export function weekCellLabel(value) {
   const match = text.match(/^(\d+)/);
   if (match) return match[1];
   return text;
+}
+
+export const WORK_DAYS_PER_MONTH = 22;
+
+export function occupancyDays(value) {
+  if (!value) return 0;
+  if (isVacation(value)) return 0;
+  const parsed = Number(weekCellLabel(value));
+  return Number.isFinite(parsed) ? parsed : 1;
+}
+
+export function weekMonthKey(isoMonday) {
+  if (!isoMonday || !/^\d{4}-\d{2}-\d{2}$/.test(isoMonday)) return '';
+  const date = new Date(`${isoMonday}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 2);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+export function formatMonthLabel(monthKey) {
+  const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+  const [, month] = String(monthKey).split('-');
+  return months[Number(month) - 1] || monthKey;
+}
+
+function isDemandPlaceholder(resource) {
+  return /потребность/i.test(String(resource || ''));
+}
+
+function balanceStatus(balance) {
+  if (balance < 0) return 'дефицит';
+  if (balance > 0) return 'профицит';
+  return 'норма';
+}
+
+export function rolePersonDays(data = {}) {
+  const weeks = normalizeWeeks(data.weeks, data.entries);
+  const allowedWeeks = new Set(weeks.map((week) => week.iso));
+  const entries = Array.isArray(data.entries) ? data.entries : [];
+  const months = [...new Set(weeks.map((week) => weekMonthKey(week.iso)).filter(Boolean))].sort();
+  const byRole = new Map();
+
+  const ensure = (role) => {
+    if (!byRole.has(role)) {
+      byRole.set(role, { people: new Map(), demand: new Map() });
+    }
+    return byRole.get(role);
+  };
+
+  for (const entry of entries) {
+    const role = entry.role || '';
+    if (!role || role === 'Отпуск') continue;
+    const bucket = ensure(role);
+    const personKey = `${entry.team || ''}\0${entry.resource || ''}`;
+    const placeholder = isDemandPlaceholder(entry.resource);
+    for (const [iso, value] of Object.entries(entry.weeks || {})) {
+      if (!value) continue;
+      if (allowedWeeks.size && !allowedWeeks.has(iso)) continue;
+      const month = weekMonthKey(iso);
+      if (!month) continue;
+      const days = occupancyDays(value);
+      bucket.demand.set(month, (bucket.demand.get(month) || 0) + days);
+      if (!placeholder) {
+        if (!bucket.people.has(personKey)) bucket.people.set(personKey, new Set());
+        bucket.people.get(personKey).add(month);
+      }
+    }
+  }
+
+  const monthStats = (demandMap, peopleMap) => {
+    const out = {};
+    for (const month of months) {
+      const days = demandMap.get(month) || 0;
+      let people = 0;
+      for (const active of peopleMap.values()) {
+        if (active.has(month)) people += 1;
+      }
+      const capacity = people * WORK_DAYS_PER_MONTH;
+      const balance = capacity - days;
+      out[month] = { days, people, capacity, balance, status: balanceStatus(balance) };
+    }
+    return out;
+  };
+
+  const rows = [...byRole.keys()].sort((a, b) => a.localeCompare(b, 'ru')).map((role) => {
+    const bucket = byRole.get(role);
+    const monthMap = monthStats(bucket.demand, bucket.people);
+    const days = Object.values(monthMap).reduce((sum, item) => sum + item.days, 0);
+    const capacity = Object.values(monthMap).reduce((sum, item) => sum + item.capacity, 0);
+    const balance = capacity - days;
+    return {
+      role,
+      people: bucket.people.size,
+      days,
+      capacity,
+      balance,
+      status: balanceStatus(balance),
+      load: capacity ? days / capacity : (days ? Infinity : 0),
+      months: monthMap,
+    };
+  });
+
+  return { months, rows, workDaysPerMonth: WORK_DAYS_PER_MONTH };
 }
 
 export function conflictTaskLabel(teams, entry) {
@@ -738,6 +854,31 @@ function isConflictWeekRole(weekIso, role) {
   return state.data.conflicts.some((conflict) => conflict.week === weekIso && conflict.role === role);
 }
 
+function visibleCapacity() {
+  const weeks = state.week ? state.data.weeks.filter((week) => week.iso === state.week) : state.data.weeks;
+  const entries = state.data.entries.filter((entry) => {
+    if (!state.activeTeams.has(entry.team)) return false;
+    if (state.role && entry.role !== state.role) return false;
+    if (state.type && entry.type !== state.type) return false;
+    if (state.query) {
+      const hay = `${entry.task} ${entry.resource} ${entry.ticket} ${entry.role} ${entry.type}`.toLowerCase();
+      if (!hay.includes(state.query)) return false;
+    }
+    return Object.keys(entry.weeks || {}).length > 0;
+  });
+  return rolePersonDays({ weeks, entries });
+}
+
+function signedDays(value) {
+  if (value > 0) return `+${value}`;
+  return String(value);
+}
+
+function formatLoad(load) {
+  if (!Number.isFinite(load)) return '∞';
+  return `${Math.round(load * 100)}%`;
+}
+
 function renderStats() {
   const active = state.data.entries.filter((entry) => Object.keys(entry.weeks || {}).length > 0);
   const visible = filterEntries();
@@ -746,6 +887,7 @@ function renderStats() {
     ['Пересечений', state.data.conflicts.length, 'роль × неделя'],
     ['Недель', state.data.weeks.length, state.data.weeks[0]?.label + ' — ' + state.data.weeks.at(-1)?.label],
     ['Команд', state.teamKeys.length, 'в выбранном таймлайне'],
+    ['Ролей в дефиците', visibleCapacity().rows.filter((row) => row.balance < 0).length, `норма ${WORK_DAYS_PER_MONTH} дн./чел. в месяц`],
   ].map(([label, value, hint]) => `
     <article class="stat">
       <div class="val">${esc(value)}</div>
@@ -921,6 +1063,46 @@ function renderRoles() {
   }).join('');
 }
 
+function renderCapacity() {
+  const data = visibleCapacity();
+  const note = document.getElementById('capacityNote');
+  note.textContent = `Норма ${WORK_DAYS_PER_MONTH} рабочих дня на человека в месяц. Баланс = норма − человеко-дни. «Потребность …» идёт в спрос, но не в численность.`;
+  const thead = document.querySelector('#capacityTable thead');
+  const tbody = document.querySelector('#capacityTable tbody');
+  const monthHeaders = data.months.map((month) => `<th>${esc(formatMonthLabel(month))}</th>`).join('');
+  thead.innerHTML = `<tr>
+    <th>Специальность</th>
+    <th>Люди</th>
+    <th>Чел.-дни</th>
+    <th>Норма</th>
+    <th>Баланс</th>
+    <th>Загрузка</th>
+    ${monthHeaders}
+  </tr>`;
+  if (!data.rows.length) {
+    tbody.innerHTML = `<tr><td colspan="${6 + data.months.length}" class="empty">Нет данных по фильтрам</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.rows.map((row) => {
+    const monthCells = data.months.map((month) => {
+      const cell = row.months[month];
+      const cls = cell.balance < 0 ? 'deficit' : (cell.days ? 'surplus' : '');
+      const title = `${cell.days} чел.-дн. · ${cell.people} чел. · норма ${cell.capacity} · ${signedDays(cell.balance)}`;
+      return `<td class="${cls}" title="${esc(title)}">${cell.days ? `${cell.days} / ${signedDays(cell.balance)}` : '—'}</td>`;
+    }).join('');
+    const rowCls = row.balance < 0 ? 'deficit-row' : '';
+    return `<tr class="${rowCls}">
+      <td><strong>${esc(row.role)}</strong></td>
+      <td>${row.people}</td>
+      <td>${row.days}</td>
+      <td>${row.capacity}</td>
+      <td class="${row.balance < 0 ? 'deficit' : 'surplus'}"><strong>${esc(signedDays(row.balance))}</strong> ${esc(row.status)}</td>
+      <td>${esc(formatLoad(row.load))}</td>
+      ${monthCells}
+    </tr>`;
+  }).join('');
+}
+
 function renderAll() {
   renderTimelineSwitch();
   renderStats();
@@ -929,6 +1111,7 @@ function renderAll() {
   renderConflicts();
   renderWeekly();
   renderRoles();
+  renderCapacity();
 }
 
 function bindTabs() {
