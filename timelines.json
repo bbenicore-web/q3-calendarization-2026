@@ -1,0 +1,11 @@
+{
+  "default": "q3-2026",
+  "timelines": [
+    {
+      "id": "q3-2026",
+      "title": "3Q 2026",
+      "period": "29 июня — 5 октября 2026",
+      "file": "data.json"
+    }
+  ]
+}

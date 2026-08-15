@@ -3,415 +3,969 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Календаризация команд — 3Q 2026</title>
+  <title>Календаризация команд</title>
   <style>
-    :root {
-      --bg: #0f1419;
-      --surface: #1a2332;
-      --surface2: #243044;
-      --border: #2d3a4f;
-      --text: #e8edf4;
-      --muted: #8b9cb3;
-      --accent: #4f8cff;
-      --danger: #ff6b6b;
-      --danger-bg: rgba(255, 107, 107, 0.15);
-      --warn: #ffc857;
-      --warn-bg: rgba(255, 200, 87, 0.12);
-      --radius: 10px;
-      --shadow: 0 4px 24px rgba(0,0,0,.35);
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      line-height: 1.5;
-    }
-    header {
-      background: linear-gradient(135deg, #1a2332 0%, #243044 100%);
-      border-bottom: 1px solid var(--border);
-      padding: 1.25rem 1.5rem;
-    }
-    header h1 { font-size: 1.35rem; font-weight: 700; }
-    header p { color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem; }
-    .container { max-width: 1400px; margin: 0 auto; padding: 1.25rem 1.5rem 3rem; }
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 0.75rem;
-      margin-bottom: 1.25rem;
-    }
-    .stat {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1rem;
-    }
-    .stat .val { font-size: 1.75rem; font-weight: 700; color: var(--accent); }
-    .stat .lbl { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-    .tabs {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
-    }
-    .tab {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--muted);
-      padding: 0.55rem 1rem;
-      border-radius: 999px;
-      cursor: pointer;
-      font-size: 0.875rem;
-      transition: all .15s;
-    }
-    .tab:hover { border-color: var(--accent); color: var(--text); }
-    .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-    .panel { display: none; }
-    .panel.active { display: block; }
-    .toolbar {
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      align-items: center;
-      margin-bottom: 1rem;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 0.875rem 1rem;
-    }
-    .toolbar label { font-size: 0.8rem; color: var(--muted); }
-    input[type="search"], select {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 0.45rem 0.75rem;
-      border-radius: 6px;
-      font-size: 0.875rem;
-    }
-    input[type="search"] { min-width: 220px; flex: 1; }
-    .chip-group { display: flex; gap: 0.35rem; flex-wrap: wrap; }
-    .chip {
-      padding: 0.3rem 0.65rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      cursor: pointer;
-      border: 1px solid var(--border);
-      background: var(--surface2);
-      color: var(--muted);
-      transition: all .12s;
-    }
-    .chip.on { color: #fff; border-color: transparent; font-weight: 600; }
-    .table-wrap {
-      overflow: auto;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--surface);
-      box-shadow: var(--shadow);
-      max-height: 70vh;
-    }
-    table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
-    th {
-      position: sticky;
-      top: 0;
-      background: var(--surface2);
-      color: var(--muted);
-      text-align: left;
-      padding: 0.65rem 0.75rem;
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-      cursor: pointer;
-      user-select: none;
-      z-index: 2;
-    }
-    th:hover { color: var(--text); }
-    th.sorted { color: var(--accent); }
-    td {
-      padding: 0.55rem 0.75rem;
-      border-bottom: 1px solid var(--border);
-      vertical-align: top;
-    }
-    tr:hover td { background: rgba(79, 140, 255, 0.06); }
-    .team-badge {
-      display: inline-block;
-      padding: 0.15rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.72rem;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-    .conflict-row td { background: var(--danger-bg) !important; }
-    .multi-row td { background: var(--warn-bg) !important; }
-    .week-cell {
-      text-align: center;
-      min-width: 42px;
-      font-size: 0.7rem;
-      font-weight: 600;
-    }
-    .week-cell.filled { border-radius: 3px; }
-    .week-cell.conflict { background: var(--danger) !important; color: #fff; }
-    .legend {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      font-size: 0.75rem;
-      color: var(--muted);
-      margin-bottom: 0.75rem;
-    }
-    .legend span { display: flex; align-items: center; gap: 0.35rem; }
-    .dot { width: 10px; height: 10px; border-radius: 2px; }
-    .empty { text-align: center; padding: 3rem; color: var(--muted); }
-    .conflict-tasks { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
-    footer { text-align: center; padding: 1.5rem; color: var(--muted); font-size: 0.75rem; }
-    @media (max-width: 768px) {
-      .container { padding: 1rem; }
-      input[type="search"] { min-width: 100%; }
-    }
-  </style>
+:root {
+  --bg: #0b0f14;
+  --bg-soft: #10161d;
+  --surface: #151c25;
+  --surface-2: #1c2531;
+  --line: #2b3644;
+  --text: #eef3f8;
+  --muted: #8d9aab;
+  --accent: #3dd6c3;
+  --accent-dim: rgba(61, 214, 195, 0.14);
+  --danger: #ff5d6c;
+  --danger-bg: rgba(255, 93, 108, 0.16);
+  --warn: #f0b429;
+  --warn-bg: rgba(240, 180, 41, 0.12);
+  --vacation: #7b8898;
+  --vacation-bg: rgba(123, 136, 152, 0.22);
+  --current: rgba(61, 214, 195, 0.18);
+  --radius: 14px;
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.28);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  background: radial-gradient(1200px 500px at 10% -10%, #173038 0%, transparent 55%),
+              radial-gradient(900px 420px at 100% 0%, #1a2436 0%, transparent 50%),
+              var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif;
+  min-height: 100vh;
+  line-height: 1.45;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 1.5rem;
+  align-items: flex-start;
+  padding: 1.35rem 1.75rem 1.1rem;
+  border-bottom: 1px solid var(--line);
+  background: rgba(11, 15, 20, 0.78);
+  backdrop-filter: blur(12px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.brand { display: flex; gap: 0.9rem; align-items: center; }
+.brand-mark {
+  width: 14px;
+  height: 38px;
+  border-radius: 99px;
+  background: linear-gradient(180deg, var(--accent), #5b8def);
+  box-shadow: 0 0 18px rgba(61, 214, 195, 0.45);
+}
+.brand h1 { font-size: 1.28rem; font-weight: 720; letter-spacing: -0.02em; }
+.brand p, .updated { color: var(--muted); font-size: 0.82rem; }
+
+.topbar-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.55rem;
+}
+
+.timeline-switch { display: flex; flex-wrap: wrap; gap: 0.4rem; justify-content: flex-end; }
+.timeline-btn {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  border-radius: 999px;
+  padding: 0.4rem 0.8rem;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.timeline-btn.active {
+  background: var(--accent);
+  color: #08211d;
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.timeline-btn:hover { border-color: var(--accent); color: var(--text); }
+.timeline-btn.active:hover { color: #08211d; }
+
+.layout { max-width: 1480px; margin: 0 auto; padding: 1.25rem 1.5rem 3rem; }
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+.stat {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem 1.05rem;
+  box-shadow: var(--shadow);
+}
+.stat .val { font-size: 1.7rem; font-weight: 750; color: var(--accent); }
+.stat .lbl { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+
+.heatmap-card, .toolbar, .table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+
+.heatmap-card { padding: 1rem 1.1rem 1.05rem; margin-bottom: 1rem; }
+.heatmap-head { display: flex; justify-content: space-between; gap: 1rem; align-items: baseline; margin-bottom: 0.75rem; }
+.heatmap-head h2 { font-size: 0.95rem; }
+.heatmap-head p { color: var(--muted); font-size: 0.78rem; }
+.heatmap { display: grid; grid-template-columns: repeat(auto-fit, minmax(72px, 1fr)); gap: 0.4rem; }
+.heat-cell {
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 10px;
+  padding: 0.45rem 0.4rem;
+  cursor: pointer;
+  text-align: left;
+}
+.heat-cell .w { font-size: 0.72rem; color: var(--muted); }
+.heat-cell .n { font-size: 0.92rem; font-weight: 700; }
+.heat-cell:hover, .heat-cell.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.heat-cell.current { outline: 1px solid var(--accent); }
+.heat-cell.hot { background: var(--danger-bg); }
+.heat-cell.warm { background: var(--warn-bg); }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.85rem; }
+.tab {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.86rem;
+}
+.tab:hover { color: var(--text); border-color: var(--accent); }
+.tab.active { background: var(--accent); border-color: var(--accent); color: #08211d; font-weight: 700; }
+
+.toolbar {
+  display: flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 0.8rem;
+  padding: 0.85rem 1rem;
+}
+input[type="search"], select {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  padding: 0.48rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.875rem;
+}
+input[type="search"] { min-width: 240px; flex: 1; }
+.chip-group { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.chip {
+  padding: 0.32rem 0.68rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.chip.on { color: #fff; border-color: transparent; font-weight: 700; }
+
+.legend {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 0.75rem;
+}
+.legend span { display: flex; align-items: center; gap: 0.35rem; }
+.dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.dot.conflict { background: var(--danger); }
+.dot.vacation { background: var(--vacation); }
+.dot.current { background: var(--accent); }
+.dot.multi { background: var(--warn); }
+
+.panel { display: none; }
+.panel.active { display: block; }
+
+.table-wrap {
+  overflow: auto;
+  max-height: 72vh;
+  box-shadow: var(--shadow);
+}
+table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.8125rem; }
+th, td {
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+  background: var(--surface);
+}
+th {
+  position: sticky;
+  top: 0;
+  background: var(--surface-2);
+  color: var(--muted);
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  z-index: 3;
+}
+th:hover { color: var(--text); }
+tr:hover td { background: #1b2430; }
+.sticky-col {
+  position: sticky;
+  z-index: 2;
+  box-shadow: 8px 0 12px rgba(0,0,0,.12);
+}
+th.sticky-col { z-index: 4; }
+.col-team { left: 0; min-width: 128px; }
+.col-task { left: 128px; min-width: 240px; max-width: 320px; }
+
+.team-badge {
+  display: inline-block;
+  padding: 0.14rem 0.48rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.conflict-row td { background: var(--danger-bg) !important; }
+.multi-row td { background: var(--warn-bg) !important; }
+.week-cell { text-align: center; min-width: 52px; font-size: 0.7rem; font-weight: 700; }
+.week-cell.filled { color: #fff; }
+.week-cell.conflict { background: var(--danger) !important; color: #fff; }
+.week-cell.vacation { background: var(--vacation-bg) !important; color: var(--text); font-weight: 600; }
+.week-col.current { box-shadow: inset 0 -3px 0 var(--accent); }
+td.current-week, th.current-week { background-image: linear-gradient(var(--current), var(--current)); }
+.task-cell { max-width: 320px; }
+.muted { color: var(--muted); }
+.empty { text-align: center; padding: 3rem 1rem; color: var(--muted); }
+.conflict-tasks { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
+.role-cell { text-align: center; font-weight: 700; min-width: 52px; }
+.role-cell.one { background: var(--accent-dim); }
+.role-cell.conflict { background: var(--danger); color: #fff; }
+
+footer {
+  text-align: center;
+  padding: 1.4rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+footer code { color: var(--accent); }
+
+.toast {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  padding: 0.8rem 1rem;
+  border-radius: 12px;
+  max-width: 360px;
+  box-shadow: var(--shadow);
+}
+
+.error-box { padding: 3rem 1.5rem; text-align: center; color: var(--muted); }
+.error-box h2 { color: var(--text); margin-bottom: 0.75rem; }
+
+@media (max-width: 860px) {
+  .topbar { flex-direction: column; }
+  .topbar-right { align-items: flex-start; }
+  input[type="search"] { min-width: 100%; }
+  .col-team, .col-task { position: static; box-shadow: none; }
+}
+
+</style>
 </head>
 <body>
-  <header>
-    <div class="container" style="padding-bottom:0;padding-top:0">
-      <h1>Календаризация команд — 3Q 2026</h1>
-      <p>Интерактивная таблица ресурсов и пересечений · <span id="generated"></span></p>
-    </div>
-  </header>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <h1>Календаризация команд</h1>
+          <p id="subtitle">Ресурсы, роли и пересечения по неделям</p>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="timeline-switch" id="timelineSwitch" aria-label="Таймлайны"></div>
+        <div class="updated" id="generated"></div>
+      </div>
+    </header>
 
-  <div class="container">
-    <div class="stats" id="stats"></div>
+    <main class="layout">
+      <section class="stats" id="stats"></section>
+      <section class="heatmap-card">
+        <div class="heatmap-head">
+          <h2>Нагрузка по неделям</h2>
+          <p>Клик по неделе фильтрует таблицы. Повторный клик снимает фильтр.</p>
+        </div>
+        <div class="heatmap" id="heatmap"></div>
+      </section>
 
-    <div class="tabs" id="tabs">
-      <button class="tab active" data-tab="gantt">Задачи и ресурсы</button>
-      <button class="tab" data-tab="conflicts">Пересечения</button>
-      <button class="tab" data-tab="weekly">Сводка по неделям</button>
-    </div>
+      <nav class="tabs" id="tabs">
+        <button class="tab active" data-tab="gantt">Задачи и ресурсы</button>
+        <button class="tab" data-tab="conflicts">Пересечения</button>
+        <button class="tab" data-tab="weekly">Сводка</button>
+        <button class="tab" data-tab="roles">Роли × недели</button>
+      </nav>
 
-    <div class="toolbar" id="toolbar">
-      <input type="search" id="search" placeholder="Поиск по задаче, ресурсу, тикету…">
-      <select id="roleFilter"><option value="">Все роли</option></select>
-      <div class="chip-group" id="teamChips"></div>
-    </div>
+      <section class="toolbar" id="toolbar">
+        <input type="search" id="search" placeholder="Поиск по задаче, ресурсу, тикету…">
+        <select id="roleFilter"><option value="">Все роли</option></select>
+        <select id="typeFilter"><option value="">Все типы</option></select>
+        <div class="chip-group" id="teamChips"></div>
+      </section>
 
-    <div class="legend">
-      <span><i class="dot" style="background:var(--danger)"></i> Пересечение роли</span>
-      <span><i class="dot" style="background:var(--warn)"></i> 2+ команд активны</span>
-      <span>Клик по заголовку столбца — сортировка</span>
-    </div>
+      <div class="legend">
+        <span><i class="dot conflict"></i> Пересечение роли</span>
+        <span><i class="dot vacation"></i> Отпуск</span>
+        <span><i class="dot current"></i> Текущая неделя</span>
+        <span><i class="dot multi"></i> 2+ команд активны</span>
+      </div>
 
-    <div class="panel active" id="panel-gantt">
-      <div class="table-wrap"><table id="ganttTable"><thead></thead><tbody></tbody></table></div>
-    </div>
-    <div class="panel" id="panel-conflicts">
-      <div class="table-wrap"><table id="conflictsTable"><thead></thead><tbody></tbody></table></div>
-    </div>
-    <div class="panel" id="panel-weekly">
-      <div class="table-wrap"><table id="weeklyTable"><thead></thead><tbody></tbody></table></div>
-    </div>
+      <section class="panel active" id="panel-gantt">
+        <div class="table-wrap"><table id="ganttTable"><thead></thead><tbody></tbody></table></div>
+      </section>
+      <section class="panel" id="panel-conflicts">
+        <div class="table-wrap"><table id="conflictsTable"><thead></thead><tbody></tbody></table></div>
+      </section>
+      <section class="panel" id="panel-weekly">
+        <div class="table-wrap"><table id="weeklyTable"><thead></thead><tbody></tbody></table></div>
+      </section>
+      <section class="panel" id="panel-roles">
+        <div class="table-wrap"><table id="rolesTable"><thead></thead><tbody></tbody></table></div>
+      </section>
+    </main>
+
+    <footer>
+      Новые таймлайны подключаются через <code>timelines.json</code> и файл в том же формате, что <code>data.json</code>.
+      Логика пересечений считается на клиенте.
+    </footer>
   </div>
 
-  <footer>Данные: МегаИнтернет · Монетизация · ДИ · Роуминг/VAS · Групповые продукты · 3Q 2026 · занятость по цвету ячеек</footer>
-
-  <script>
-    let DATA = null;
-    let activeTeams = new Set();
-    let sortState = { col: null, asc: true };
-
-    let TEAM_KEYS = [];
-
-    async function loadData() {
-      DATA = {"generated": "2026-07-12T00:40:54.322407", "teams": {"Монетизация": {"full": "Монетизация", "color": "#2E75B6", "bg": "#DDEBF7"}, "ДИ": {"full": "ДИ", "color": "#C65911", "bg": "#FCE4D6"}, "Роуминг_VAS": {"full": "Роуминг/VAS", "color": "#7030A0", "bg": "#E4DFEC"}, "Групповые_продукты": {"full": "Групповые продукты", "color": "#BF9000", "bg": "#FFF2CC"}, "МегаИнтернет": {"full": "МегаИнтернет", "color": "#548235", "bg": "#E2EFDA"}}, "weeks": [{"iso": "2026-06-29", "label": "29.06"}, {"iso": "2026-07-06", "label": "06.07"}, {"iso": "2026-07-13", "label": "13.07"}, {"iso": "2026-07-20", "label": "20.07"}, {"iso": "2026-07-27", "label": "27.07"}, {"iso": "2026-08-03", "label": "03.08"}, {"iso": "2026-08-10", "label": "10.08"}, {"iso": "2026-08-17", "label": "17.08"}, {"iso": "2026-08-24", "label": "24.08"}, {"iso": "2026-08-31", "label": "31.08"}, {"iso": "2026-09-07", "label": "07.09"}, {"iso": "2026-09-14", "label": "14.09"}, {"iso": "2026-09-21", "label": "21.09"}, {"iso": "2026-09-28", "label": "28.09"}, {"iso": "2026-10-05", "label": "05.10"}], "entries": [{"team": "МегаИнтернет", "task": "5G турбо", "resource": "Настя (диз)", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-06-29": "2"}}, {"team": "МегаИнтернет", "task": "5G турбо", "resource": "Володя (SA)", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-06-29": "1/5", "2026-07-06": "3", "2026-07-13": "5"}}, {"team": "МегаИнтернет", "task": "5G турбо", "resource": "ВЕ", "role": "ВЕ", "ticket": "", "type": "", "weeks": {"2026-07-20": "5", "2026-07-27": "5"}}, {"team": "МегаИнтернет", "task": "5G турбо", "resource": "FE", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-07-20": "5", "2026-07-27": "5"}}, {"team": "МегаИнтернет", "task": "5G турбо", "resource": "QA", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-07-27": "5", "2026-08-03": "5"}}, {"team": "МегаИнтернет", "task": "Профиль Киноман", "resource": "Настя (диз)", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-06-29": "3", "2026-07-06": "5", "2026-07-13": "5", "2026-07-20": "5"}}, {"team": "МегаИнтернет", "task": "Профиль Киноман", "resource": "Володя (SA)", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-07-20": "4", "2026-07-27": "5", "2026-08-03": "5"}}, {"team": "МегаИнтернет", "task": "Профиль Киноман", "resource": "ВЕ", "role": "ВЕ", "ticket": "", "type": "", "weeks": {"2026-08-03": "4", "2026-08-10": "5", "2026-08-17": "5"}}, {"team": "МегаИнтернет", "task": "Профиль Киноман", "resource": "FE", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-08-17": "5", "2026-08-24": "5", "2026-09-28": "2"}}, {"team": "МегаИнтернет", "task": "Профиль Киноман", "resource": "QA", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-08-24": "5", "2026-09-28": "5", "2026-09-07": "4"}}, {"team": "МегаИнтернет", "task": "Целевая схема возврата", "resource": "Настя (диз)", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-08-03": "5", "2026-08-10": "5", "2026-08-17": "5", "2026-08-24": "5"}}, {"team": "МегаИнтернет", "task": "Целевая схема возврата", "resource": "Володя (SA)", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-08-17": "5", "2026-08-24": "5", "2026-09-28": "5", "2026-09-07": "отпуск", "2026-09-14": "5"}}, {"team": "МегаИнтернет", "task": "Коммерческий запуск сетей 5G", "resource": "Настя (диз)", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-07-20": "1"}}, {"team": "МегаИнтернет", "task": "Коммерческий запуск сетей 5G", "resource": "Володя (SA)", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-07-20": "1"}}, {"team": "МегаИнтернет", "task": "Коммерческий запуск сетей 5G", "resource": "ВЕ", "role": "ВЕ", "ticket": "", "type": "", "weeks": {"2026-07-20": "1"}}, {"team": "МегаИнтернет", "task": "Коммерческий запуск сетей 5G", "resource": "FE", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-07-20": "1"}}, {"team": "МегаИнтернет", "task": "Коммерческий запуск сетей 5G", "resource": "QA", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-07-27": "2"}}, {"team": "МегаИнтернет", "task": "Страховка как отдельный продукт", "resource": "Настя (диз)", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-09-28": "5", "2026-09-07": "5", "2026-09-14": "5"}}, {"team": "МегаИнтернет", "task": "Страховка как отдельный продукт", "resource": "Володя (SA)", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-09-21": "5", "2026-09-28": "5", "2026-10-05": "5"}}, {"team": "Монетизация", "task": "Переезд из монги в ПК (финальные задачи)", "resource": "тесты", "role": "QA", "ticket": "CKO-56897", "type": "", "weeks": {"2026-07-20": "? релиз рубильника, мкс ПК и импортера/НТ LK-27582"}}, {"team": "Монетизация", "task": "Оптимизация продактс (режим low-power)", "resource": "аналитика", "role": "SA", "ticket": "CKO-56952", "type": "", "weeks": {"2026-07-06": "А", "2026-07-20": "А", "2026-08-17": "А", "2026-08-24": "А"}}, {"team": "Монетизация", "task": "Оптимизация продактс (режим low-power)", "resource": "бэк", "role": "BE", "ticket": "CKO-56952", "type": "", "weeks": {"2026-07-06": "BE", "2026-07-13": "BE", "2026-07-20": "BE", "2026-08-17": "ресерч/BE", "2026-08-24": "оптимизация/BE"}}, {"team": "Монетизация", "task": "Оптимизация продактс (режим low-power)", "resource": "тесты", "role": "QA", "ticket": "CKO-56952", "type": "", "weeks": {"2026-07-06": "QA", "2026-07-13": "QA", "2026-07-20": "QA", "2026-07-27": "QA/НТ", "2026-08-03": "QA", "2026-08-24": "оптимизация/QA", "2026-08-31": "QA"}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "дизайн", "role": "Дизайн", "ticket": "CKO-58192", "type": "", "weeks": {"2026-07-13": "Е"}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "аналитика", "role": "SA", "ticket": "CKO-58192", "type": "", "weeks": {"2026-07-27": "А"}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "бэк", "role": "BE", "ticket": "CKO-58192", "type": "", "weeks": {"2026-08-10": "BE"}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "фронт", "role": "FE", "ticket": "CKO-58192", "type": "", "weeks": {"2026-08-10": "FE"}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "тесты", "role": "QA", "ticket": "CKO-58192", "type": "", "weeks": {"2026-08-10": "QA"}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "копирайт", "role": "Копирайт", "ticket": "CKO-58192", "type": "", "weeks": {"2026-07-27": "K", "2026-06-29": "K"}}, {"team": "Монетизация", "task": "Ускорение главной", "resource": "бэк", "role": "BE", "ticket": "CKO-58662", "type": "", "weeks": {"2026-07-06": "А", "2026-08-10": "BE"}}, {"team": "Монетизация", "task": "Ускорение главной", "resource": "тесты", "role": "QA", "ticket": "CKO-58662", "type": "", "weeks": {"2026-08-17": "QA"}}, {"team": "Монетизация", "task": "Разметка ключевых сценариев", "resource": "фронт", "role": "FE", "ticket": "CKO-58662", "type": "", "weeks": {"2026-08-10": "FE"}}, {"team": "Монетизация", "task": "Разметка ключевых сценариев", "resource": "тесты", "role": "QA", "ticket": "CKO-58662", "type": "", "weeks": {"2026-08-17": "QA"}}, {"team": "Монетизация", "task": "Автоматизация информирования (IVR-REPRICE)", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-83", "type": "деливери", "weeks": {"2026-06-29": "синк с мкс", "2026-07-13": "синк с мкс"}}, {"team": "Монетизация", "task": "Автоматизация информирования (IVR-REPRICE)", "resource": "тесты", "role": "QA", "ticket": "B2CPROD-83", "type": "деливери", "weeks": {"2026-07-20": "QA/6 готовность мкс канал Тест", "2026-08-10": "ретест на канале ЛК LK-27187/QA"}}, {"team": "Монетизация", "task": "Целевая схема скидок и их взаимодействия", "resource": "дизайн", "role": "Дизайн", "ticket": "B2CPROD-996", "type": "дискавери", "weeks": {"2026-07-06": "старт", "2026-07-13": "?/D"}}, {"team": "Монетизация", "task": "Целевая схема скидок и их взаимодействия", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-996", "type": "дискавери", "weeks": {"2026-07-20": "А", "2026-07-27": "А"}}, {"team": "Монетизация", "task": "Срок действия в Услугах", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-892", "type": "деливери", "weeks": {"2026-06-29": "А", "2026-07-06": "А"}}, {"team": "Монетизация", "task": "Срок действия в Услугах", "resource": "бэк", "role": "BE", "ticket": "B2CPROD-892", "type": "деливери", "weeks": {"2026-07-13": "BE"}}, {"team": "Монетизация", "task": "Срок действия в Услугах", "resource": "фронт", "role": "FE", "ticket": "B2CPROD-892", "type": "деливери", "weeks": {"2026-07-13": "FE"}}, {"team": "Монетизация", "task": "Срок действия в Услугах", "resource": "тесты", "role": "QA", "ticket": "B2CPROD-892", "type": "деливери", "weeks": {"2026-07-13": "QA", "2026-07-20": "QA/релиз"}}, {"team": "Монетизация", "task": "Новые автопроды", "resource": "дизайн", "role": "Дизайн", "ticket": "B2CPROD-1406", "type": "дискавери", "weeks": {"2026-07-13": "старт", "2026-07-20": "?/D", "2026-07-27": "D"}}, {"team": "Монетизация", "task": "Новые автопроды", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-1406", "type": "дискавери", "weeks": {"2026-08-03": "А", "2026-08-10": "А"}}, {"team": "Монетизация", "task": "Новая механика списания АП при смене тарифа", "resource": "дизайн", "role": "Дизайн", "ticket": "B2CPROD-1409", "type": "дискавери", "weeks": {"2026-07-20": "старт", "2026-08-03": "?/D", "2026-08-10": "D"}}, {"team": "Монетизация", "task": "Новая механика списания АП при смене тарифа", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-1409", "type": "дискавери", "weeks": {"2026-08-17": "А", "2026-08-24": "А"}}, {"team": "Монетизация", "task": "Склеивание АП при подкл-и услуг", "resource": "дизайн", "role": "Дизайн", "ticket": "B2CPROD-1500", "type": "дискавери", "weeks": {"2026-08-10": "старт/D"}}, {"team": "Монетизация", "task": "Склеивание АП при подкл-и услуг", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-1500", "type": "дискавери", "weeks": {"2026-08-24": "А", "2026-08-31": "А", "2026-09-21": "А"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "Дизайн", "role": "Дизайн", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-06-29": "дизайн", "2026-07-06": "дизайн", "2026-07-13": "дизайн", "2026-07-20": "отпуск", "2026-07-27": "отпуск", "2026-08-03": "дизайн"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "UX-исследование - не подтвердили ресурс", "role": "UX", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-07-20": "UX", "2026-07-27": "UX"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "Аналитика", "role": "SA", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-08-10": "аналитика", "2026-08-17": "аналитика", "2026-08-24": "аналитика"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "Бэкенд", "role": "BE", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-08-31": "бэк", "2026-09-07": "бэк"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-09-07": "фронт", "2026-09-14": "фронт"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "Тестирование", "role": "QA", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-09-07": "QA", "2026-09-14": "QA", "2026-09-21": "QA", "2026-09-28": "QA", "2026-10-05": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "Дизайн", "role": "Дизайн", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-08-10": "дизайн", "2026-08-17": "дизайн", "2026-09-07": "дизайн"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "UX-исследование - не подтвердили ресурс", "role": "UX", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-08-24": "UX", "2026-08-31": "UX"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "ADR", "role": "SA", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-08-24": "ADR", "2026-08-31": "ADR"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "Аналитика", "role": "SA", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-09-14": "аналитика", "2026-09-21": "аналитика"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "Бэкенд", "role": "BE", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-09-28": "бэк"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-09-28": "фронт", "2026-10-05": "фронт"}}, {"team": "Роуминг_VAS", "task": "Создание новых расширителей на полке роуминга (минуты, смс, карты)", "resource": "RnD", "role": "RnD", "ticket": "B2CPROD-1128", "type": "Delivery", "weeks": {"2026-06-29": "RnD", "2026-07-06": "RnD"}}, {"team": "Роуминг_VAS", "task": "Создание новых расширителей на полке роуминга (минуты, смс, карты)", "resource": "Бэкенд", "role": "BE", "ticket": "B2CPROD-1128", "type": "Delivery", "weeks": {"2026-07-06": "бэк"}}, {"team": "Роуминг_VAS", "task": "Создание новых расширителей на полке роуминга (минуты, смс, карты)", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-1128", "type": "Delivery", "weeks": {"2026-06-29": "фронт", "2026-07-06": "фронт", "2026-07-13": "фронт"}}, {"team": "Роуминг_VAS", "task": "Создание новых расширителей на полке роуминга (минуты, смс, карты)", "resource": "Тестирование", "role": "QA", "ticket": "B2CPROD-1128", "type": "Delivery", "weeks": {"2026-07-06": "QA", "2026-07-13": "QA", "2026-07-20": "QA", "2026-07-27": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "Новый метод подключения пакетов /bulk", "resource": "Бэкенд", "role": "BE", "ticket": "CKO-58119", "type": "Delivery", "weeks": {"2026-07-13": "бэк"}}, {"team": "Роуминг_VAS", "task": "Новый метод подключения пакетов /bulk", "resource": "Тестирование", "role": "QA", "ticket": "CKO-58119", "type": "Delivery", "weeks": {"2026-07-27": "QA", "2026-08-03": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Скрыть разводящую роуминга\"", "resource": "Веб-аналитика", "role": "SA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-07-13": "web"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Скрыть разводящую роуминга\"", "resource": "Аналитика", "role": "SA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-07-13": "аналитика"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Скрыть разводящую роуминга\"", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-07-20": "фронт", "2026-07-27": "отпуск"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Скрыть разводящую роуминга\"", "resource": "Тестирование", "role": "QA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-08-03": "QA", "2026-08-10": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Безлимит на Яндекс\"", "resource": "Веб-аналитика", "role": "SA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-07-13": "web"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Безлимит на Яндекс\"", "resource": "Аналитика", "role": "SA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-07-13": "аналитика"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Безлимит на Яндекс\"", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-08-03": "фронт"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Безлимит на Яндекс\"", "resource": "Тестирование", "role": "QA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-08-10": "QA", "2026-08-17": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "Моно-пакет минут на полке роуминга", "resource": "Дизайн", "role": "Дизайн", "ticket": "B2CPROD-1563", "type": "Delivery", "weeks": {"2026-07-13": "дизайн"}}, {"team": "Роуминг_VAS", "task": "Моно-пакет минут на полке роуминга", "resource": "Аналитика", "role": "SA", "ticket": "B2CPROD-1563", "type": "Delivery", "weeks": {"2026-07-20": "аналитика", "2026-07-27": "аналитика", "2026-08-03": "аналитика"}}, {"team": "Роуминг_VAS", "task": "Моно-пакет минут на полке роуминга", "resource": "Бэкенд", "role": "BE", "ticket": "B2CPROD-1563", "type": "Delivery", "weeks": {"2026-08-03": "отпуск", "2026-08-10": "отпуск", "2026-08-17": "бэк"}}, {"team": "Роуминг_VAS", "task": "Моно-пакет минут на полке роуминга", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-1563", "type": "Delivery", "weeks": {"2026-08-17": "фронт"}}, {"team": "Роуминг_VAS", "task": "Моно-пакет минут на полке роуминга", "resource": "Тестирование", "role": "QA", "ticket": "B2CPROD-1563", "type": "Delivery", "weeks": {"2026-08-24": "QA", "2026-08-31": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "АБ-тест \"Сайт роуминга\"", "resource": "Дизайн", "role": "Дизайн", "ticket": "B2CPROD-630", "type": "Discovery + delivery", "weeks": {"2026-08-24": "дизайн", "2026-08-31": "дизайн"}}, {"team": "Роуминг_VAS", "task": "Работа над конверсией с страниц стран и карточек пакетов раздела Роуминг в МЛК: 5G, сервисы Яндекса", "resource": "Дизайн", "role": "Дизайн", "ticket": "B2CPROD-1568", "type": "Discovery", "weeks": {"2026-08-24": "дизайн", "2026-08-31": "дизайн"}}, {"team": "Роуминг_VAS", "task": "Работа над конверсией с страниц стран и карточек пакетов раздела Роуминг в МЛК: 5G, сервисы Яндекса", "resource": "UX-исследование - не подтвердили ресурс", "role": "UX", "ticket": "B2CPROD-1568", "type": "Discovery", "weeks": {"2026-09-07": "UX", "2026-09-14": "UX"}}, {"team": "Роуминг_VAS", "task": "Работа над конверсией с страниц стран и карточек пакетов раздела Роуминг в МЛК: 5G, сервисы Яндекса", "resource": "11. Тех. долг - пока не распланировала", "role": "11. Тех. долг - пока не р", "ticket": "B2CPROD-1568", "type": "Discovery", "weeks": {"2026-07-27": "11. Те", "2026-08-31": "11. Те", "2026-10-05": "11. Те"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Гоша", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-06-29": "доработка алертов", "2026-07-20": "SA", "2026-07-27": "поддержка релиза/SA", "2026-08-10": "обработка конфликтов/SA"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Андрей", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-06-29": "В2В/BE/FE/названия разделов", "2026-07-20": "SA"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Никита", "role": "BE", "ticket": "", "type": "", "weeks": {"2026-06-29": "доработка алертов", "2026-07-06": "№6", "2026-07-20": "BE", "2026-07-27": "поддержка релиза/BE", "2026-08-10": "обработка конфликтов/BE", "2026-08-17": "обработка конфликтов/BE"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Оля", "role": "BE", "ticket": "", "type": "", "weeks": {"2026-06-29": "В2В", "2026-07-06": "названия разделов", "2026-07-13": "BE", "2026-07-20": "BE"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Ваня", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-07-06": "faq/названия разделов/FE", "2026-07-13": "FE", "2026-07-20": "FE", "2026-07-27": "поддержка релиза/FE"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Богдан", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-06-29": "№2", "2026-07-06": "В2В/FE/скидки/мастер-слейв", "2026-07-13": "FE", "2026-07-20": "FE"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Миша Б", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-06-29": "QA/баги/доработка алертов", "2026-07-06": "№6", "2026-07-13": "№6/названия разделов/QA", "2026-07-20": "QA", "2026-07-27": "поддержка релиза/QA"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Антон", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-06-29": "№2/№5", "2026-07-06": "№5", "2026-07-13": "В2В lk-28201/wlk-14693/wlk-14737/QA", "2026-07-20": "QA", "2026-07-27": "QA"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Миша К", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-06-29": "№2", "2026-07-06": "изм. роли LK-28052/изм. роли WLK-14576/QA/WLK-14526 дата рожд взр/Е2Е", "2026-07-13": "QA", "2026-07-20": "QA"}}, {"team": "Групповые_продукты", "task": "№2 Роли не МФ без ГЕО", "resource": "Ваня", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-06-29": "FE"}}, {"team": "Групповые_продукты", "task": "№2 Роли не МФ без ГЕО", "resource": "Антон", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-06-29": "wlk-14524/wlk-14525/QA"}}, {"team": "Групповые_продукты", "task": "№2 Роли не МФ без ГЕО", "resource": "Миша К", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-06-29": "lk-27934/lk-27948/lk-27950/LK-28083"}}, {"team": "Групповые_продукты", "task": "№6 ГЕО у детей: Создание бесплатной подписки Радар+Мегасемья для детского профиля", "resource": "Гоша", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-06-29": "баннеры/SA", "2026-07-27": "лейб+блок инфо"}}, {"team": "Групповые_продукты", "task": "№6 ГЕО у детей: Создание бесплатной подписки Радар+Мегасемья для детского профиля", "resource": "Никита", "role": "BE", "ticket": "", "type": "", "weeks": {"2026-06-29": "успех+ленд LK 28113/BE", "2026-07-06": "баннеры lk-28197", "2026-08-03": "лейбл+блок инфо/BE"}}, {"team": "Групповые_продукты", "task": "№6 ГЕО у детей: Создание бесплатной подписки Радар+Мегасемья для детского профиля", "resource": "Ваня", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-06-29": "успех+ленд WLK-14593/FE", "2026-07-06": "wlk-14686/FE", "2026-08-03": "лейбл+блок инфо/FE"}}, {"team": "Групповые_продукты", "task": "№6 ГЕО у детей: Создание бесплатной подписки Радар+Мегасемья для детского профиля", "resource": "Миша Б", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-07-06": "LK 28113/WLK-14593/lk-28197", "2026-07-13": "wlk-14686", "2026-08-03": "лейбл+блок инфо/QA", "2026-08-10": "QA"}}, {"team": "Групповые_продукты", "task": "№5 Скидки NORCA для МегаСемьи", "resource": "Миша Б", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-07-13": "D"}}, {"team": "Групповые_продукты", "task": "№5 Скидки NORCA для МегаСемьи", "resource": "Андрей", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-07-13": "SA"}}, {"team": "Групповые_продукты", "task": "№5 Скидки NORCA для МегаСемьи", "resource": "Никита", "role": "BE", "ticket": "", "type": "", "weeks": {"2026-06-29": "BE", "2026-07-13": "BE"}}, {"team": "Групповые_продукты", "task": "№5 Скидки NORCA для МегаСемьи", "resource": "Богдан", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-06-29": "wlk-14374/FE", "2026-07-13": "FE"}}, {"team": "Групповые_продукты", "task": "№5 Скидки NORCA для МегаСемьи", "resource": "Антон", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-06-29": "lk-27961/QA", "2026-07-06": "wlk-14374/wlk-14757", "2026-07-13": "QA"}}, {"team": "Групповые_продукты", "task": "№4 Доработка Семейной безопасности: Блокировка спам-звонков", "resource": "Андрей", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-07-27": "SA"}}, {"team": "Групповые_продукты", "task": "№4 Доработка Семейной безопасности: Блокировка спам-звонков", "resource": "Никита Коструб", "role": "BE", "ticket": "", "type": "", "weeks": {"2026-07-27": "BE"}}, {"team": "Групповые_продукты", "task": "№4 Доработка Семейной безопасности: Блокировка спам-звонков", "resource": "Иван Титов", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-07-27": "FE"}}, {"team": "Групповые_продукты", "task": "№4 Доработка Семейной безопасности: Блокировка спам-звонков", "resource": "Миша Бодров", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-07-27": "QA"}}, {"team": "Групповые_продукты", "task": "Q3 ДГП целевая шаринг МегаСемья 2.0 - реализация шаринга в МегаСемье 2.0 для перехода на целевое решение", "resource": "Гоша", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-07-06": "SA", "2026-07-13": "SA", "2026-07-20": "SA", "2026-07-27": "SA", "2026-08-03": "SA", "2026-08-10": "SA", "2026-08-17": "SA", "2026-08-24": "SA"}}, {"team": "Групповые_продукты", "task": "Q3 ДГП целевая шаринг МегаСемья 2.0 - реализация шаринга в МегаСемье 2.0 для перехода на целевое решение", "resource": "Иван", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-08-31": "FE", "2026-09-07": "FE", "2026-09-14": "FE", "2026-09-21": "FE"}}, {"team": "Групповые_продукты", "task": "Q3 ДГП целевая шаринг МегаСемья 2.0 - реализация шаринга в МегаСемье 2.0 для перехода на целевое решение", "resource": "Никита", "role": "BE", "ticket": "", "type": "", "weeks": {"2026-08-24": "BE", "2026-08-31": "BE", "2026-09-07": "BE"}}, {"team": "Групповые_продукты", "task": "Q3 ДГП Проработка реализации \"Плати за близких\" в ССМ", "resource": "Гоша", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-07-27": "SA", "2026-08-03": "SA", "2026-08-10": "SA"}}, {"team": "ДИ", "task": "Пересборка линейки FMC", "resource": "SA", "role": "SA", "ticket": "B2CPROD-1055", "type": "", "weeks": {"2026-08-17": "SA", "2026-08-24": "SA"}}, {"team": "ДИ", "task": "Пересборка линейки FMC", "resource": "BE", "role": "BE", "ticket": "B2CPROD-1055", "type": "", "weeks": {"2026-08-24": "BE", "2026-08-31": "BE", "2026-09-07": "BE"}}, {"team": "ДИ", "task": "Пересборка линейки FMC", "resource": "FE", "role": "FE", "ticket": "B2CPROD-1055", "type": "", "weeks": {"2026-08-31": "FE", "2026-09-07": "FE", "2026-09-14": "FE"}}, {"team": "ДИ", "task": "Пересборка линейки FMC", "resource": "SA", "role": "SA", "ticket": "B2CPROD-1055", "type": "", "weeks": {"2026-07-20": "SA"}}, {"team": "ДИ", "task": "Пересборка линейки FMC", "resource": "QA", "role": "QA", "ticket": "B2CPROD-1055", "type": "", "weeks": {"2026-08-31": "QA", "2026-09-07": "QA", "2026-09-14": "QA", "2026-09-21": "QA", "2026-09-28": "QA"}}, {"team": "ДИ", "task": "ЛК. Определить наполнение раздела и точку входа для действующих абонентов с ДИ", "resource": "BE", "role": "BE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-06-29": "BE", "2026-07-06": "BE", "2026-07-13": "BE", "2026-07-20": "BE", "2026-07-27": "BE"}}, {"team": "ДИ", "task": "ЛК. Определить наполнение раздела и точку входа для действующих абонентов с ДИ", "resource": "FE", "role": "FE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-06-29": "FE", "2026-07-06": "FE", "2026-07-13": "FE", "2026-07-20": "FE"}}, {"team": "ДИ", "task": "ЛК. Определить наполнение раздела и точку входа для действующих абонентов с ДИ", "resource": "QA", "role": "QA", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-06-29": "QA", "2026-07-06": "QA", "2026-07-13": "QA", "2026-07-20": "отпуск QA", "2026-07-27": "QA", "2026-08-03": "QA", "2026-08-10": "QA", "2026-08-17": "QA"}}, {"team": "ДИ", "task": "Редактирование заявки", "resource": "BE", "role": "BE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-08-03": "BE", "2026-08-10": "BE"}}, {"team": "ДИ", "task": "Редактирование заявки", "resource": "FE", "role": "FE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-08-03": "FE"}}, {"team": "ДИ", "task": "Редактирование заявки", "resource": "QA", "role": "QA", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-08-24": "QA", "2026-08-31": "QA", "2026-09-07": "QA"}}, {"team": "ДИ", "task": "Рассрочка оборудования", "resource": "BE", "role": "BE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-08-17": "BE", "2026-09-14": "BE"}}, {"team": "ДИ", "task": "Рассрочка оборудования", "resource": "FE", "role": "FE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-08-10": "FE"}}, {"team": "ДИ", "task": "Сайт. Упрощение CJ оставления заявки на сайте и создание целевой заявки", "resource": "QA", "role": "QA", "ticket": "B2CPROD-639", "type": "", "weeks": {"2026-06-29": "QA (S)", "2026-07-06": "QA (S)", "2026-07-13": "QA (S)", "2026-07-20": "QA (S)"}}], "conflicts": [{"week": "2026-06-29", "weekLabel": "29.06", "role": "Дизайн", "teams": ["МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] 5G турбо / Настя (диз)", "[МегаИнтернет] Профиль Киноман / Настя (диз)", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн"]}, {"week": "2026-06-29", "weekLabel": "29.06", "role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация"], "tasks": ["[МегаИнтернет] 5G турбо / Володя (SA)", "[Монетизация] Автоматизация информирования (IVR-REPRICE) / аналитика", "[Монетизация] Срок действия в Услугах / аналитика", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Гоша", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Андрей", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Гоша"]}, {"week": "2026-06-29", "weekLabel": "29.06", "role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Создание новых расширителей на полке роуминга / Фронтенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Богдан", "[Групповые продукты] №2 Роли не МФ без ГЕО / Ваня", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Ваня", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Богдан", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / FE"]}, {"week": "2026-06-29", "weekLabel": "29.06", "role": "BE", "teams": ["Групповые продукты", "ДИ"], "tasks": ["[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Никита", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Оля", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Никита", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Никита", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / BE"]}, {"week": "2026-06-29", "weekLabel": "29.06", "role": "QA", "teams": ["Групповые продукты", "ДИ"], "tasks": ["[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша Б", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Антон", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша К", "[Групповые продукты] №2 Роли не МФ без ГЕО / Антон", "[Групповые продукты] №2 Роли не МФ без ГЕО / Миша К", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Антон", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / QA", "[ДИ] Сайт. Упрощение CJ оставления заявки на сайте / QA"]}, {"week": "2026-07-06", "weekLabel": "06.07", "role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация"], "tasks": ["[МегаИнтернет] 5G турбо / Володя (SA)", "[Монетизация] Оптимизация продактс (режим low-power) / аналитика", "[Монетизация] Срок действия в Услугах / аналитика", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Гоша"]}, {"week": "2026-07-06", "weekLabel": "06.07", "role": "Дизайн", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / Настя (диз)", "[Монетизация] Целевая схема скидок и их взаимодействия / дизайн", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн"]}, {"week": "2026-07-06", "weekLabel": "06.07", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / бэк", "[Монетизация] Ускорение главной / бэк", "[Роуминг/VAS] Создание новых расширителей на полке роуминга / Бэкенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Никита", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Оля", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Никита", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / BE"]}, {"week": "2026-07-06", "weekLabel": "06.07", "role": "QA", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / тесты", "[Роуминг/VAS] Создание новых расширителей на полке роуминга / Тестирование", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша Б", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Антон", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша К", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Миша Б", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Антон", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / QA", "[ДИ] Сайт. Упрощение CJ оставления заявки на сайте / QA"]}, {"week": "2026-07-06", "weekLabel": "06.07", "role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Создание новых расширителей на полке роуминга / Фронтенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Ваня", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Богдан", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Ваня", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / FE"]}, {"week": "2026-07-13", "weekLabel": "13.07", "role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] 5G турбо / Володя (SA)", "[Монетизация] Автоматизация информирования (IVR-REPRICE) / аналитика", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Веб-аналитика", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Аналитика", "[Роуминг/VAS] ABC-тест \"Безлимит на Яндекс\" / Веб-аналитика", "[Роуминг/VAS] ABC-тест \"Безлимит на Яндекс\" / Аналитика", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Андрей", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Гоша"]}, {"week": "2026-07-13", "weekLabel": "13.07", "role": "Дизайн", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / Настя (диз)", "[Монетизация] Обновление раздела Инфо / дизайн", "[Монетизация] Целевая схема скидок и их взаимодействия / дизайн", "[Монетизация] Новые автопроды / дизайн", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Дизайн", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Миша Б"]}, {"week": "2026-07-13", "weekLabel": "13.07", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / бэк", "[Монетизация] Срок действия в Услугах / бэк", "[Роуминг/VAS] Новый метод подключения пакетов /bulk / Бэкенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Оля", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Никита", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / BE"]}, {"week": "2026-07-13", "weekLabel": "13.07", "role": "QA", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / тесты", "[Монетизация] Срок действия в Услугах / тесты", "[Роуминг/VAS] Создание новых расширителей на полке роуминга / Тестирование", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша Б", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Антон", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша К", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Миша Б", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Антон", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / QA", "[ДИ] Сайт. Упрощение CJ оставления заявки на сайте / QA"]}, {"week": "2026-07-13", "weekLabel": "13.07", "role": "FE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Срок действия в Услугах / фронт", "[Роуминг/VAS] Создание новых расширителей на полке роуминга / Фронтенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Ваня", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Богдан", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Богдан", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / FE"]}, {"week": "2026-07-20", "weekLabel": "20.07", "role": "FE", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] 5G турбо / FE", "[МегаИнтернет] Коммерческий запуск сетей 5G / FE", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Фронтенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Ваня", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Богдан", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / FE"]}, {"week": "2026-07-20", "weekLabel": "20.07", "role": "Дизайн", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / Настя (диз)", "[МегаИнтернет] Коммерческий запуск сетей 5G / Настя (диз)", "[Монетизация] Новые автопроды / дизайн", "[Монетизация] Новая механика списания АП при смене тарифа / дизайн", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн"]}, {"week": "2026-07-20", "weekLabel": "20.07", "role": "SA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / Володя (SA)", "[МегаИнтернет] Коммерческий запуск сетей 5G / Володя (SA)", "[Монетизация] Оптимизация продактс (режим low-power) / аналитика", "[Монетизация] Целевая схема скидок и их взаимодействия / аналитика", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Аналитика", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Гоша", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Андрей", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Гоша", "[ДИ] Пересборка линейки FMC / SA"]}, {"week": "2026-07-20", "weekLabel": "20.07", "role": "QA", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Переезд из монги в ПК (финальные задачи) / тесты", "[Монетизация] Оптимизация продактс (режим low-power) / тесты", "[Монетизация] Автоматизация информирования (IVR-REPRICE) / тесты", "[Монетизация] Срок действия в Услугах / тесты", "[Роуминг/VAS] Создание новых расширителей на полке роуминга / Тестирование", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша Б", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Антон", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша К", "[ДИ] Сайт. Упрощение CJ оставления заявки на сайте / QA"]}, {"week": "2026-07-20", "weekLabel": "20.07", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / бэк", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Никита", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Оля", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / BE"]}, {"week": "2026-07-27", "weekLabel": "27.07", "role": "FE", "teams": ["Групповые продукты", "МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] 5G турбо / FE", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Фронтенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Ваня", "[Групповые продукты] №4 Доработка Семейной безопасности: Блокировк / Иван Титов"]}, {"week": "2026-07-27", "weekLabel": "27.07", "role": "QA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] 5G турбо / QA", "[МегаИнтернет] Коммерческий запуск сетей 5G / QA", "[Монетизация] Оптимизация продактс (режим low-power) / тесты", "[Роуминг/VAS] Создание новых расширителей на полке роуминга / Тестирование", "[Роуминг/VAS] Новый метод подключения пакетов /bulk / Тестирование", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша Б", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Антон", "[Групповые продукты] №4 Доработка Семейной безопасности: Блокировк / Миша Бодров", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / QA"]}, {"week": "2026-07-27", "weekLabel": "27.07", "role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / Володя (SA)", "[Монетизация] Обновление раздела Инфо / аналитика", "[Монетизация] Целевая схема скидок и их взаимодействия / аналитика", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Аналитика", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Гоша", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Гоша", "[Групповые продукты] №4 Доработка Семейной безопасности: Блокировк / Андрей", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Гоша", "[Групповые продукты] Q3 ДГП Проработка реализации \"Плати за близки / Гоша"]}, {"week": "2026-07-27", "weekLabel": "27.07", "role": "Дизайн", "teams": ["Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Новые автопроды / дизайн", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн"]}, {"week": "2026-07-27", "weekLabel": "27.07", "role": "BE", "teams": ["Групповые продукты", "ДИ"], "tasks": ["[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Никита", "[Групповые продукты] №4 Доработка Семейной безопасности: Блокировк / Никита Коструб", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / BE"]}, {"week": "2026-08-03", "weekLabel": "03.08", "role": "QA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] 5G турбо / QA", "[Монетизация] Оптимизация продактс (режим low-power) / тесты", "[Роуминг/VAS] Новый метод подключения пакетов /bulk / Тестирование", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Тестирование", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Миша Б", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / QA"]}, {"week": "2026-08-03", "weekLabel": "03.08", "role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / Володя (SA)", "[Монетизация] Новые автопроды / аналитика", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Аналитика", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Гоша", "[Групповые продукты] Q3 ДГП Проработка реализации \"Плати за близки / Гоша"]}, {"week": "2026-08-03", "weekLabel": "03.08", "role": "Дизайн", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Целевая схема возврата / Настя (диз)", "[Монетизация] Новая механика списания АП при смене тарифа / дизайн", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн"]}, {"week": "2026-08-03", "weekLabel": "03.08", "role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] ABC-тест \"Безлимит на Яндекс\" / Фронтенд", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Ваня", "[ДИ] Редактирование заявки / FE"]}, {"week": "2026-08-03", "weekLabel": "03.08", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Моно-пакет минут на полке роуминга / Бэкенд", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Никита", "[ДИ] Редактирование заявки / BE"]}, {"week": "2026-08-10", "weekLabel": "10.08", "role": "Дизайн", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Целевая схема возврата / Настя (диз)", "[Монетизация] Новая механика списания АП при смене тарифа / дизайн", "[Монетизация] Склеивание АП при подкл-и услуг / дизайн", "[Роуминг/VAS] Режим роуминга / Дизайн"]}, {"week": "2026-08-10", "weekLabel": "10.08", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Обновление раздела Инфо / бэк", "[Монетизация] Ускорение главной / бэк", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Бэкенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Никита", "[ДИ] Редактирование заявки / BE"]}, {"week": "2026-08-10", "weekLabel": "10.08", "role": "FE", "teams": ["ДИ", "Монетизация"], "tasks": ["[Монетизация] Обновление раздела Инфо / фронт", "[Монетизация] Разметка ключевых сценариев / фронт", "[ДИ] Рассрочка оборудования / FE"]}, {"week": "2026-08-10", "weekLabel": "10.08", "role": "QA", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Обновление раздела Инфо / тесты", "[Монетизация] Автоматизация информирования (IVR-REPRICE) / тесты", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Тестирование", "[Роуминг/VAS] ABC-тест \"Безлимит на Яндекс\" / Тестирование", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Миша Б", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / QA"]}, {"week": "2026-08-10", "weekLabel": "10.08", "role": "SA", "teams": ["Групповые продукты", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Новые автопроды / аналитика", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Аналитика", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Гоша", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Гоша", "[Групповые продукты] Q3 ДГП Проработка реализации \"Плати за близки / Гоша"]}, {"week": "2026-08-17", "weekLabel": "17.08", "role": "FE", "teams": ["МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / FE", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Фронтенд"]}, {"week": "2026-08-17", "weekLabel": "17.08", "role": "Дизайн", "teams": ["МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Целевая схема возврата / Настя (диз)", "[Роуминг/VAS] Режим роуминга / Дизайн"]}, {"week": "2026-08-17", "weekLabel": "17.08", "role": "SA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Целевая схема возврата / Володя (SA)", "[Монетизация] Оптимизация продактс (режим low-power) / аналитика", "[Монетизация] Новая механика списания АП при смене тарифа / аналитика", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Аналитика", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Гоша", "[ДИ] Пересборка линейки FMC / SA"]}, {"week": "2026-08-17", "weekLabel": "17.08", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / бэк", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Бэкенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Никита", "[ДИ] Рассрочка оборудования / BE"]}, {"week": "2026-08-17", "weekLabel": "17.08", "role": "QA", "teams": ["ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Ускорение главной / тесты", "[Монетизация] Разметка ключевых сценариев / тесты", "[Роуминг/VAS] ABC-тест \"Безлимит на Яндекс\" / Тестирование", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / QA"]}, {"week": "2026-08-24", "weekLabel": "24.08", "role": "QA", "teams": ["ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / QA", "[Монетизация] Оптимизация продактс (режим low-power) / тесты", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Тестирование", "[ДИ] Редактирование заявки / QA"]}, {"week": "2026-08-24", "weekLabel": "24.08", "role": "Дизайн", "teams": ["МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Целевая схема возврата / Настя (диз)", "[Роуминг/VAS] АБ-тест \"Сайт роуминга\" / Дизайн", "[Роуминг/VAS] Работа над конверсией с страниц стран и карто / Дизайн"]}, {"week": "2026-08-24", "weekLabel": "24.08", "role": "SA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Целевая схема возврата / Володя (SA)", "[Монетизация] Оптимизация продактс (режим low-power) / аналитика", "[Монетизация] Новая механика списания АП при смене тарифа / аналитика", "[Монетизация] Склеивание АП при подкл-и услуг / аналитика", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Аналитика", "[Роуминг/VAS] Режим роуминга / ADR", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Гоша", "[ДИ] Пересборка линейки FMC / SA"]}, {"week": "2026-08-24", "weekLabel": "24.08", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / бэк", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Никита", "[ДИ] Пересборка линейки FMC / BE"]}, {"week": "2026-08-31", "weekLabel": "31.08", "role": "QA", "teams": ["ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / тесты", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Тестирование", "[ДИ] Пересборка линейки FMC / QA", "[ДИ] Редактирование заявки / QA"]}, {"week": "2026-08-31", "weekLabel": "31.08", "role": "SA", "teams": ["Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Склеивание АП при подкл-и услуг / аналитика", "[Роуминг/VAS] Режим роуминга / ADR"]}, {"week": "2026-08-31", "weekLabel": "31.08", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Бэкенд", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Никита", "[ДИ] Пересборка линейки FMC / BE"]}, {"week": "2026-08-31", "weekLabel": "31.08", "role": "FE", "teams": ["Групповые продукты", "ДИ"], "tasks": ["[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Иван", "[ДИ] Пересборка линейки FMC / FE"]}, {"week": "2026-09-07", "weekLabel": "07.09", "role": "QA", "teams": ["ДИ", "МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / QA", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Тестирование", "[ДИ] Пересборка линейки FMC / QA", "[ДИ] Редактирование заявки / QA"]}, {"week": "2026-09-07", "weekLabel": "07.09", "role": "Дизайн", "teams": ["МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Страховка как отдельный продукт / Настя (диз)", "[Роуминг/VAS] Режим роуминга / Дизайн"]}, {"week": "2026-09-07", "weekLabel": "07.09", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Бэкенд", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Никита", "[ДИ] Пересборка линейки FMC / BE"]}, {"week": "2026-09-07", "weekLabel": "07.09", "role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Фронтенд", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Иван", "[ДИ] Пересборка линейки FMC / FE"]}, {"week": "2026-09-14", "weekLabel": "14.09", "role": "SA", "teams": ["МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Целевая схема возврата / Володя (SA)", "[Роуминг/VAS] Режим роуминга / Аналитика"]}, {"week": "2026-09-14", "weekLabel": "14.09", "role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Фронтенд", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Иван", "[ДИ] Пересборка линейки FMC / FE"]}, {"week": "2026-09-14", "weekLabel": "14.09", "role": "QA", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Тестирование", "[ДИ] Пересборка линейки FMC / QA"]}, {"week": "2026-09-21", "weekLabel": "21.09", "role": "SA", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Страховка как отдельный продукт / Володя (SA)", "[Монетизация] Склеивание АП при подкл-и услуг / аналитика", "[Роуминг/VAS] Режим роуминга / Аналитика"]}, {"week": "2026-09-21", "weekLabel": "21.09", "role": "QA", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Тестирование", "[ДИ] Пересборка линейки FMC / QA"]}, {"week": "2026-09-28", "weekLabel": "28.09", "role": "FE", "teams": ["МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / FE", "[Роуминг/VAS] Режим роуминга / Фронтенд"]}, {"week": "2026-09-28", "weekLabel": "28.09", "role": "QA", "teams": ["ДИ", "МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / QA", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Тестирование", "[ДИ] Пересборка линейки FMC / QA"]}], "weekly": [{"week": "2026-06-29", "weekLabel": "29.06", "total": 30, "counts": {"МегаИнтернет": 3, "Монетизация": 3, "Роуминг/VAS": 3, "Групповые продукты": 17, "ДИ": 4}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "Дизайн", "teams": ["МегаИнтернет", "Роуминг/VAS"]}, {"role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация"]}, {"role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ"]}, {"role": "QA", "teams": ["Групповые продукты", "ДИ"]}]}, {"week": "2026-07-06", "weekLabel": "06.07", "total": 29, "counts": {"МегаИнтернет": 2, "Монетизация": 6, "Роуминг/VAS": 5, "Групповые продукты": 12, "ДИ": 4}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация"]}, {"role": "Дизайн", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "QA", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"]}]}, {"week": "2026-07-13", "weekLabel": "13.07", "total": 37, "counts": {"МегаИнтернет": 2, "Монетизация": 9, "Роуминг/VAS": 9, "Групповые продукты": 13, "ДИ": 4}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "QA", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "FE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}]}, {"week": "2026-07-20", "weekLabel": "20.07", "total": 37, "counts": {"МегаИнтернет": 8, "Монетизация": 9, "Роуминг/VAS": 5, "Групповые продукты": 10, "ДИ": 5}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "FE", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "SA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "QA", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация"]}]}, {"week": "2026-07-27", "weekLabel": "27.07", "total": 31, "counts": {"МегаИнтернет": 5, "Монетизация": 5, "Роуминг/VAS": 7, "Групповые продукты": 12, "ДИ": 2}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "FE", "teams": ["Групповые продукты", "МегаИнтернет", "Роуминг/VAS"]}, {"role": "QA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ"]}]}, {"week": "2026-08-03", "weekLabel": "03.08", "total": 21, "counts": {"МегаИнтернет": 4, "Монетизация": 3, "Роуминг/VAS": 6, "Групповые продукты": 5, "ДИ": 3}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "QA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"]}]}, {"week": "2026-08-10", "weekLabel": "10.08", "total": 24, "counts": {"МегаИнтернет": 2, "Монетизация": 9, "Роуминг/VAS": 5, "Групповые продукты": 5, "ДИ": 3}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "Дизайн", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "FE", "teams": ["ДИ", "Монетизация"]}, {"role": "QA", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "SA", "teams": ["Групповые продукты", "Монетизация", "Роуминг/VAS"]}]}, {"week": "2026-08-17", "weekLabel": "17.08", "total": 19, "counts": {"МегаИнтернет": 4, "Монетизация": 5, "Роуминг/VAS": 5, "Групповые продукты": 2, "ДИ": 3}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "FE", "teams": ["МегаИнтернет", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["МегаИнтернет", "Роуминг/VAS"]}, {"role": "SA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "QA", "teams": ["ДИ", "Монетизация", "Роуминг/VAS"]}]}, {"week": "2026-08-24", "weekLabel": "24.08", "total": 20, "counts": {"МегаИнтернет": 4, "Монетизация": 5, "Роуминг/VAS": 6, "Групповые продукты": 2, "ДИ": 3}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "QA", "teams": ["ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["МегаИнтернет", "Роуминг/VAS"]}, {"role": "SA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация"]}]}, {"week": "2026-08-31", "weekLabel": "31.08", "total": 15, "counts": {"Монетизация": 2, "Роуминг/VAS": 7, "Групповые продукты": 2, "ДИ": 4}, "activeTeams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "QA", "teams": ["ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "SA", "teams": ["Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"]}, {"role": "FE", "teams": ["Групповые продукты", "ДИ"]}]}, {"week": "2026-09-07", "weekLabel": "07.09", "total": 14, "counts": {"МегаИнтернет": 3, "Роуминг/VAS": 5, "Групповые продукты": 2, "ДИ": 4}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Роуминг/VAS"], "conflicts": [{"role": "QA", "teams": ["ДИ", "МегаИнтернет", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["МегаИнтернет", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"]}, {"role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"]}]}, {"week": "2026-09-14", "weekLabel": "14.09", "total": 10, "counts": {"МегаИнтернет": 2, "Роуминг/VAS": 4, "Групповые продукты": 1, "ДИ": 3}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Роуминг/VAS"], "conflicts": [{"role": "SA", "teams": ["МегаИнтернет", "Роуминг/VAS"]}, {"role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"]}, {"role": "QA", "teams": ["ДИ", "Роуминг/VAS"]}]}, {"week": "2026-09-21", "weekLabel": "21.09", "total": 6, "counts": {"МегаИнтернет": 1, "Монетизация": 1, "Роуминг/VAS": 2, "Групповые продукты": 1, "ДИ": 1}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "SA", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "QA", "teams": ["ДИ", "Роуминг/VAS"]}]}, {"week": "2026-09-28", "weekLabel": "28.09", "total": 9, "counts": {"МегаИнтернет": 5, "Роуминг/VAS": 3, "ДИ": 1}, "activeTeams": ["ДИ", "МегаИнтернет", "Роуминг/VAS"], "conflicts": [{"role": "FE", "teams": ["МегаИнтернет", "Роуминг/VAS"]}, {"role": "QA", "teams": ["ДИ", "МегаИнтернет", "Роуминг/VAS"]}]}, {"week": "2026-10-05", "weekLabel": "05.10", "total": 4, "counts": {"МегаИнтернет": 1, "Роуминг/VAS": 3}, "activeTeams": ["МегаИнтернет", "Роуминг/VAS"], "conflicts": []}]};
-      TEAM_KEYS = Object.keys(DATA.teams);
-      document.getElementById('generated').textContent = 'обновлено ' + new Date(DATA.generated).toLocaleString('ru-RU');
-      TEAM_KEYS.forEach(t => activeTeams.add(t));
-      initFilters();
-      renderStats();
-      renderAll();
+  <div class="toast" id="toast" hidden></div>
+  <script type="module">
+window.EMBEDDED_FILES = {
+  "timelines.json": {
+  "default": "q3-2026",
+  "timelines": [
+    {
+      "id": "q3-2026",
+      "title": "3Q 2026",
+      "period": "29 июня — 5 октября 2026",
+      "file": "data.json"
     }
+  ]
+}
+,
+  "data.json": {"generated": "2026-07-12T00:40:54.322407", "teams": {"Монетизация": {"full": "Монетизация", "color": "#2E75B6", "bg": "#DDEBF7"}, "ДИ": {"full": "ДИ", "color": "#C65911", "bg": "#FCE4D6"}, "Роуминг_VAS": {"full": "Роуминг/VAS", "color": "#7030A0", "bg": "#E4DFEC"}, "Групповые_продукты": {"full": "Групповые продукты", "color": "#BF9000", "bg": "#FFF2CC"}, "МегаИнтернет": {"full": "МегаИнтернет", "color": "#548235", "bg": "#E2EFDA"}}, "weeks": [{"iso": "2026-06-29", "label": "29.06"}, {"iso": "2026-07-06", "label": "06.07"}, {"iso": "2026-07-13", "label": "13.07"}, {"iso": "2026-07-20", "label": "20.07"}, {"iso": "2026-07-27", "label": "27.07"}, {"iso": "2026-08-03", "label": "03.08"}, {"iso": "2026-08-10", "label": "10.08"}, {"iso": "2026-08-17", "label": "17.08"}, {"iso": "2026-08-24", "label": "24.08"}, {"iso": "2026-08-31", "label": "31.08"}, {"iso": "2026-09-07", "label": "07.09"}, {"iso": "2026-09-14", "label": "14.09"}, {"iso": "2026-09-21", "label": "21.09"}, {"iso": "2026-09-28", "label": "28.09"}, {"iso": "2026-10-05", "label": "05.10"}], "entries": [{"team": "МегаИнтернет", "task": "5G турбо", "resource": "Настя (диз)", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-06-29": "2"}}, {"team": "МегаИнтернет", "task": "5G турбо", "resource": "Володя (SA)", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-06-29": "1/5", "2026-07-06": "3", "2026-07-13": "5"}}, {"team": "МегаИнтернет", "task": "5G турбо", "resource": "ВЕ", "role": "ВЕ", "ticket": "", "type": "", "weeks": {"2026-07-20": "5", "2026-07-27": "5"}}, {"team": "МегаИнтернет", "task": "5G турбо", "resource": "FE", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-07-20": "5", "2026-07-27": "5"}}, {"team": "МегаИнтернет", "task": "5G турбо", "resource": "QA", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-07-27": "5", "2026-08-03": "5"}}, {"team": "МегаИнтернет", "task": "Профиль Киноман", "resource": "Настя (диз)", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-06-29": "3", "2026-07-06": "5", "2026-07-13": "5", "2026-07-20": "5"}}, {"team": "МегаИнтернет", "task": "Профиль Киноман", "resource": "Володя (SA)", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-07-20": "4", "2026-07-27": "5", "2026-08-03": "5"}}, {"team": "МегаИнтернет", "task": "Профиль Киноман", "resource": "ВЕ", "role": "ВЕ", "ticket": "", "type": "", "weeks": {"2026-08-03": "4", "2026-08-10": "5", "2026-08-17": "5"}}, {"team": "МегаИнтернет", "task": "Профиль Киноман", "resource": "FE", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-08-17": "5", "2026-08-24": "5", "2026-09-28": "2"}}, {"team": "МегаИнтернет", "task": "Профиль Киноман", "resource": "QA", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-08-24": "5", "2026-09-28": "5", "2026-09-07": "4"}}, {"team": "МегаИнтернет", "task": "Целевая схема возврата", "resource": "Настя (диз)", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-08-03": "5", "2026-08-10": "5", "2026-08-17": "5", "2026-08-24": "5"}}, {"team": "МегаИнтернет", "task": "Целевая схема возврата", "resource": "Володя (SA)", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-08-17": "5", "2026-08-24": "5", "2026-09-28": "5", "2026-09-07": "отпуск", "2026-09-14": "5"}}, {"team": "МегаИнтернет", "task": "Коммерческий запуск сетей 5G", "resource": "Настя (диз)", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-07-20": "1"}}, {"team": "МегаИнтернет", "task": "Коммерческий запуск сетей 5G", "resource": "Володя (SA)", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-07-20": "1"}}, {"team": "МегаИнтернет", "task": "Коммерческий запуск сетей 5G", "resource": "ВЕ", "role": "ВЕ", "ticket": "", "type": "", "weeks": {"2026-07-20": "1"}}, {"team": "МегаИнтернет", "task": "Коммерческий запуск сетей 5G", "resource": "FE", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-07-20": "1"}}, {"team": "МегаИнтернет", "task": "Коммерческий запуск сетей 5G", "resource": "QA", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-07-27": "2"}}, {"team": "МегаИнтернет", "task": "Страховка как отдельный продукт", "resource": "Настя (диз)", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-09-28": "5", "2026-09-07": "5", "2026-09-14": "5"}}, {"team": "МегаИнтернет", "task": "Страховка как отдельный продукт", "resource": "Володя (SA)", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-09-21": "5", "2026-09-28": "5", "2026-10-05": "5"}}, {"team": "Монетизация", "task": "Переезд из монги в ПК (финальные задачи)", "resource": "тесты", "role": "QA", "ticket": "CKO-56897", "type": "", "weeks": {"2026-07-20": "? релиз рубильника, мкс ПК и импортера/НТ LK-27582"}}, {"team": "Монетизация", "task": "Оптимизация продактс (режим low-power)", "resource": "аналитика", "role": "SA", "ticket": "CKO-56952", "type": "", "weeks": {"2026-07-06": "А", "2026-07-20": "А", "2026-08-17": "А", "2026-08-24": "А"}}, {"team": "Монетизация", "task": "Оптимизация продактс (режим low-power)", "resource": "бэк", "role": "BE", "ticket": "CKO-56952", "type": "", "weeks": {"2026-07-06": "BE", "2026-07-13": "BE", "2026-07-20": "BE", "2026-08-17": "ресерч/BE", "2026-08-24": "оптимизация/BE"}}, {"team": "Монетизация", "task": "Оптимизация продактс (режим low-power)", "resource": "тесты", "role": "QA", "ticket": "CKO-56952", "type": "", "weeks": {"2026-07-06": "QA", "2026-07-13": "QA", "2026-07-20": "QA", "2026-07-27": "QA/НТ", "2026-08-03": "QA", "2026-08-24": "оптимизация/QA", "2026-08-31": "QA"}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "дизайн", "role": "Дизайн", "ticket": "CKO-58192", "type": "", "weeks": {"2026-07-13": "Е"}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "аналитика", "role": "SA", "ticket": "CKO-58192", "type": "", "weeks": {"2026-07-27": "А"}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "бэк", "role": "BE", "ticket": "CKO-58192", "type": "", "weeks": {"2026-08-10": "BE"}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "фронт", "role": "FE", "ticket": "CKO-58192", "type": "", "weeks": {"2026-08-10": "FE"}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "тесты", "role": "QA", "ticket": "CKO-58192", "type": "", "weeks": {"2026-08-10": "QA"}}, {"team": "Монетизация", "task": "Обновление раздела Инфо", "resource": "копирайт", "role": "Копирайт", "ticket": "CKO-58192", "type": "", "weeks": {"2026-07-27": "K", "2026-06-29": "K"}}, {"team": "Монетизация", "task": "Ускорение главной", "resource": "бэк", "role": "BE", "ticket": "CKO-58662", "type": "", "weeks": {"2026-07-06": "А", "2026-08-10": "BE"}}, {"team": "Монетизация", "task": "Ускорение главной", "resource": "тесты", "role": "QA", "ticket": "CKO-58662", "type": "", "weeks": {"2026-08-17": "QA"}}, {"team": "Монетизация", "task": "Разметка ключевых сценариев", "resource": "фронт", "role": "FE", "ticket": "CKO-58662", "type": "", "weeks": {"2026-08-10": "FE"}}, {"team": "Монетизация", "task": "Разметка ключевых сценариев", "resource": "тесты", "role": "QA", "ticket": "CKO-58662", "type": "", "weeks": {"2026-08-17": "QA"}}, {"team": "Монетизация", "task": "Автоматизация информирования (IVR-REPRICE)", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-83", "type": "деливери", "weeks": {"2026-06-29": "синк с мкс", "2026-07-13": "синк с мкс"}}, {"team": "Монетизация", "task": "Автоматизация информирования (IVR-REPRICE)", "resource": "тесты", "role": "QA", "ticket": "B2CPROD-83", "type": "деливери", "weeks": {"2026-07-20": "QA/6 готовность мкс канал Тест", "2026-08-10": "ретест на канале ЛК LK-27187/QA"}}, {"team": "Монетизация", "task": "Целевая схема скидок и их взаимодействия", "resource": "дизайн", "role": "Дизайн", "ticket": "B2CPROD-996", "type": "дискавери", "weeks": {"2026-07-06": "старт", "2026-07-13": "?/D"}}, {"team": "Монетизация", "task": "Целевая схема скидок и их взаимодействия", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-996", "type": "дискавери", "weeks": {"2026-07-20": "А", "2026-07-27": "А"}}, {"team": "Монетизация", "task": "Срок действия в Услугах", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-892", "type": "деливери", "weeks": {"2026-06-29": "А", "2026-07-06": "А"}}, {"team": "Монетизация", "task": "Срок действия в Услугах", "resource": "бэк", "role": "BE", "ticket": "B2CPROD-892", "type": "деливери", "weeks": {"2026-07-13": "BE"}}, {"team": "Монетизация", "task": "Срок действия в Услугах", "resource": "фронт", "role": "FE", "ticket": "B2CPROD-892", "type": "деливери", "weeks": {"2026-07-13": "FE"}}, {"team": "Монетизация", "task": "Срок действия в Услугах", "resource": "тесты", "role": "QA", "ticket": "B2CPROD-892", "type": "деливери", "weeks": {"2026-07-13": "QA", "2026-07-20": "QA/релиз"}}, {"team": "Монетизация", "task": "Новые автопроды", "resource": "дизайн", "role": "Дизайн", "ticket": "B2CPROD-1406", "type": "дискавери", "weeks": {"2026-07-13": "старт", "2026-07-20": "?/D", "2026-07-27": "D"}}, {"team": "Монетизация", "task": "Новые автопроды", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-1406", "type": "дискавери", "weeks": {"2026-08-03": "А", "2026-08-10": "А"}}, {"team": "Монетизация", "task": "Новая механика списания АП при смене тарифа", "resource": "дизайн", "role": "Дизайн", "ticket": "B2CPROD-1409", "type": "дискавери", "weeks": {"2026-07-20": "старт", "2026-08-03": "?/D", "2026-08-10": "D"}}, {"team": "Монетизация", "task": "Новая механика списания АП при смене тарифа", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-1409", "type": "дискавери", "weeks": {"2026-08-17": "А", "2026-08-24": "А"}}, {"team": "Монетизация", "task": "Склеивание АП при подкл-и услуг", "resource": "дизайн", "role": "Дизайн", "ticket": "B2CPROD-1500", "type": "дискавери", "weeks": {"2026-08-10": "старт/D"}}, {"team": "Монетизация", "task": "Склеивание АП при подкл-и услуг", "resource": "аналитика", "role": "SA", "ticket": "B2CPROD-1500", "type": "дискавери", "weeks": {"2026-08-24": "А", "2026-08-31": "А", "2026-09-21": "А"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "Дизайн", "role": "Дизайн", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-06-29": "дизайн", "2026-07-06": "дизайн", "2026-07-13": "дизайн", "2026-07-20": "отпуск", "2026-07-27": "отпуск", "2026-08-03": "дизайн"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "UX-исследование - не подтвердили ресурс", "role": "UX", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-07-20": "UX", "2026-07-27": "UX"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "Аналитика", "role": "SA", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-08-10": "аналитика", "2026-08-17": "аналитика", "2026-08-24": "аналитика"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "Бэкенд", "role": "BE", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-08-31": "бэк", "2026-09-07": "бэк"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-09-07": "фронт", "2026-09-14": "фронт"}}, {"team": "Роуминг_VAS", "task": "Смена номера \"Улучшение воронки\"", "resource": "Тестирование", "role": "QA", "ticket": "B2CPROD-943", "type": "Discovery + delivery", "weeks": {"2026-09-07": "QA", "2026-09-14": "QA", "2026-09-21": "QA", "2026-09-28": "QA", "2026-10-05": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "Дизайн", "role": "Дизайн", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-08-10": "дизайн", "2026-08-17": "дизайн", "2026-09-07": "дизайн"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "UX-исследование - не подтвердили ресурс", "role": "UX", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-08-24": "UX", "2026-08-31": "UX"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "ADR", "role": "SA", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-08-24": "ADR", "2026-08-31": "ADR"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "Аналитика", "role": "SA", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-09-14": "аналитика", "2026-09-21": "аналитика"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "Бэкенд", "role": "BE", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-09-28": "бэк"}}, {"team": "Роуминг_VAS", "task": "Режим роуминга", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-443", "type": "Discovery + delivery", "weeks": {"2026-09-28": "фронт", "2026-10-05": "фронт"}}, {"team": "Роуминг_VAS", "task": "Создание новых расширителей на полке роуминга (минуты, смс, карты)", "resource": "RnD", "role": "RnD", "ticket": "B2CPROD-1128", "type": "Delivery", "weeks": {"2026-06-29": "RnD", "2026-07-06": "RnD"}}, {"team": "Роуминг_VAS", "task": "Создание новых расширителей на полке роуминга (минуты, смс, карты)", "resource": "Бэкенд", "role": "BE", "ticket": "B2CPROD-1128", "type": "Delivery", "weeks": {"2026-07-06": "бэк"}}, {"team": "Роуминг_VAS", "task": "Создание новых расширителей на полке роуминга (минуты, смс, карты)", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-1128", "type": "Delivery", "weeks": {"2026-06-29": "фронт", "2026-07-06": "фронт", "2026-07-13": "фронт"}}, {"team": "Роуминг_VAS", "task": "Создание новых расширителей на полке роуминга (минуты, смс, карты)", "resource": "Тестирование", "role": "QA", "ticket": "B2CPROD-1128", "type": "Delivery", "weeks": {"2026-07-06": "QA", "2026-07-13": "QA", "2026-07-20": "QA", "2026-07-27": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "Новый метод подключения пакетов /bulk", "resource": "Бэкенд", "role": "BE", "ticket": "CKO-58119", "type": "Delivery", "weeks": {"2026-07-13": "бэк"}}, {"team": "Роуминг_VAS", "task": "Новый метод подключения пакетов /bulk", "resource": "Тестирование", "role": "QA", "ticket": "CKO-58119", "type": "Delivery", "weeks": {"2026-07-27": "QA", "2026-08-03": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Скрыть разводящую роуминга\"", "resource": "Веб-аналитика", "role": "SA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-07-13": "web"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Скрыть разводящую роуминга\"", "resource": "Аналитика", "role": "SA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-07-13": "аналитика"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Скрыть разводящую роуминга\"", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-07-20": "фронт", "2026-07-27": "отпуск"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Скрыть разводящую роуминга\"", "resource": "Тестирование", "role": "QA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-08-03": "QA", "2026-08-10": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Безлимит на Яндекс\"", "resource": "Веб-аналитика", "role": "SA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-07-13": "web"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Безлимит на Яндекс\"", "resource": "Аналитика", "role": "SA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-07-13": "аналитика"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Безлимит на Яндекс\"", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-08-03": "фронт"}}, {"team": "Роуминг_VAS", "task": "ABC-тест \"Безлимит на Яндекс\"", "resource": "Тестирование", "role": "QA", "ticket": "B2CPROD-1129", "type": "Delivery", "weeks": {"2026-08-10": "QA", "2026-08-17": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "Моно-пакет минут на полке роуминга", "resource": "Дизайн", "role": "Дизайн", "ticket": "B2CPROD-1563", "type": "Delivery", "weeks": {"2026-07-13": "дизайн"}}, {"team": "Роуминг_VAS", "task": "Моно-пакет минут на полке роуминга", "resource": "Аналитика", "role": "SA", "ticket": "B2CPROD-1563", "type": "Delivery", "weeks": {"2026-07-20": "аналитика", "2026-07-27": "аналитика", "2026-08-03": "аналитика"}}, {"team": "Роуминг_VAS", "task": "Моно-пакет минут на полке роуминга", "resource": "Бэкенд", "role": "BE", "ticket": "B2CPROD-1563", "type": "Delivery", "weeks": {"2026-08-03": "отпуск", "2026-08-10": "отпуск", "2026-08-17": "бэк"}}, {"team": "Роуминг_VAS", "task": "Моно-пакет минут на полке роуминга", "resource": "Фронтенд", "role": "FE", "ticket": "B2CPROD-1563", "type": "Delivery", "weeks": {"2026-08-17": "фронт"}}, {"team": "Роуминг_VAS", "task": "Моно-пакет минут на полке роуминга", "resource": "Тестирование", "role": "QA", "ticket": "B2CPROD-1563", "type": "Delivery", "weeks": {"2026-08-24": "QA", "2026-08-31": "QA - релиз"}}, {"team": "Роуминг_VAS", "task": "АБ-тест \"Сайт роуминга\"", "resource": "Дизайн", "role": "Дизайн", "ticket": "B2CPROD-630", "type": "Discovery + delivery", "weeks": {"2026-08-24": "дизайн", "2026-08-31": "дизайн"}}, {"team": "Роуминг_VAS", "task": "Работа над конверсией с страниц стран и карточек пакетов раздела Роуминг в МЛК: 5G, сервисы Яндекса", "resource": "Дизайн", "role": "Дизайн", "ticket": "B2CPROD-1568", "type": "Discovery", "weeks": {"2026-08-24": "дизайн", "2026-08-31": "дизайн"}}, {"team": "Роуминг_VAS", "task": "Работа над конверсией с страниц стран и карточек пакетов раздела Роуминг в МЛК: 5G, сервисы Яндекса", "resource": "UX-исследование - не подтвердили ресурс", "role": "UX", "ticket": "B2CPROD-1568", "type": "Discovery", "weeks": {"2026-09-07": "UX", "2026-09-14": "UX"}}, {"team": "Роуминг_VAS", "task": "Работа над конверсией с страниц стран и карточек пакетов раздела Роуминг в МЛК: 5G, сервисы Яндекса", "resource": "11. Тех. долг - пока не распланировала", "role": "11. Тех. долг - пока не р", "ticket": "B2CPROD-1568", "type": "Discovery", "weeks": {"2026-07-27": "11. Те", "2026-08-31": "11. Те", "2026-10-05": "11. Те"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Гоша", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-06-29": "доработка алертов", "2026-07-20": "SA", "2026-07-27": "поддержка релиза/SA", "2026-08-10": "обработка конфликтов/SA"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Андрей", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-06-29": "В2В/BE/FE/названия разделов", "2026-07-20": "SA"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Никита", "role": "BE", "ticket": "", "type": "", "weeks": {"2026-06-29": "доработка алертов", "2026-07-06": "№6", "2026-07-20": "BE", "2026-07-27": "поддержка релиза/BE", "2026-08-10": "обработка конфликтов/BE", "2026-08-17": "обработка конфликтов/BE"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Оля", "role": "BE", "ticket": "", "type": "", "weeks": {"2026-06-29": "В2В", "2026-07-06": "названия разделов", "2026-07-13": "BE", "2026-07-20": "BE"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Ваня", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-07-06": "faq/названия разделов/FE", "2026-07-13": "FE", "2026-07-20": "FE", "2026-07-27": "поддержка релиза/FE"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Богдан", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-06-29": "№2", "2026-07-06": "В2В/FE/скидки/мастер-слейв", "2026-07-13": "FE", "2026-07-20": "FE"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Миша Б", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-06-29": "QA/баги/доработка алертов", "2026-07-06": "№6", "2026-07-13": "№6/названия разделов/QA", "2026-07-20": "QA", "2026-07-27": "поддержка релиза/QA"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Антон", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-06-29": "№2/№5", "2026-07-06": "№5", "2026-07-13": "В2В lk-28201/wlk-14693/wlk-14737/QA", "2026-07-20": "QA", "2026-07-27": "QA"}}, {"team": "Групповые_продукты", "task": "№1 Разработка MVP ДГП МегаСемья 2.0 MVP (МегаСемья 2.0 без шаринга, Роли и продукты профилей, общий раздел в МЛК по групповым продуктам)", "resource": "Миша К", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-06-29": "№2", "2026-07-06": "изм. роли LK-28052/изм. роли WLK-14576/QA/WLK-14526 дата рожд взр/Е2Е", "2026-07-13": "QA", "2026-07-20": "QA"}}, {"team": "Групповые_продукты", "task": "№2 Роли не МФ без ГЕО", "resource": "Ваня", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-06-29": "FE"}}, {"team": "Групповые_продукты", "task": "№2 Роли не МФ без ГЕО", "resource": "Антон", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-06-29": "wlk-14524/wlk-14525/QA"}}, {"team": "Групповые_продукты", "task": "№2 Роли не МФ без ГЕО", "resource": "Миша К", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-06-29": "lk-27934/lk-27948/lk-27950/LK-28083"}}, {"team": "Групповые_продукты", "task": "№6 ГЕО у детей: Создание бесплатной подписки Радар+Мегасемья для детского профиля", "resource": "Гоша", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-06-29": "баннеры/SA", "2026-07-27": "лейб+блок инфо"}}, {"team": "Групповые_продукты", "task": "№6 ГЕО у детей: Создание бесплатной подписки Радар+Мегасемья для детского профиля", "resource": "Никита", "role": "BE", "ticket": "", "type": "", "weeks": {"2026-06-29": "успех+ленд LK 28113/BE", "2026-07-06": "баннеры lk-28197", "2026-08-03": "лейбл+блок инфо/BE"}}, {"team": "Групповые_продукты", "task": "№6 ГЕО у детей: Создание бесплатной подписки Радар+Мегасемья для детского профиля", "resource": "Ваня", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-06-29": "успех+ленд WLK-14593/FE", "2026-07-06": "wlk-14686/FE", "2026-08-03": "лейбл+блок инфо/FE"}}, {"team": "Групповые_продукты", "task": "№6 ГЕО у детей: Создание бесплатной подписки Радар+Мегасемья для детского профиля", "resource": "Миша Б", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-07-06": "LK 28113/WLK-14593/lk-28197", "2026-07-13": "wlk-14686", "2026-08-03": "лейбл+блок инфо/QA", "2026-08-10": "QA"}}, {"team": "Групповые_продукты", "task": "№5 Скидки NORCA для МегаСемьи", "resource": "Миша Б", "role": "Дизайн", "ticket": "", "type": "", "weeks": {"2026-07-13": "D"}}, {"team": "Групповые_продукты", "task": "№5 Скидки NORCA для МегаСемьи", "resource": "Андрей", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-07-13": "SA"}}, {"team": "Групповые_продукты", "task": "№5 Скидки NORCA для МегаСемьи", "resource": "Никита", "role": "BE", "ticket": "", "type": "", "weeks": {"2026-06-29": "BE", "2026-07-13": "BE"}}, {"team": "Групповые_продукты", "task": "№5 Скидки NORCA для МегаСемьи", "resource": "Богдан", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-06-29": "wlk-14374/FE", "2026-07-13": "FE"}}, {"team": "Групповые_продукты", "task": "№5 Скидки NORCA для МегаСемьи", "resource": "Антон", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-06-29": "lk-27961/QA", "2026-07-06": "wlk-14374/wlk-14757", "2026-07-13": "QA"}}, {"team": "Групповые_продукты", "task": "№4 Доработка Семейной безопасности: Блокировка спам-звонков", "resource": "Андрей", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-07-27": "SA"}}, {"team": "Групповые_продукты", "task": "№4 Доработка Семейной безопасности: Блокировка спам-звонков", "resource": "Никита Коструб", "role": "BE", "ticket": "", "type": "", "weeks": {"2026-07-27": "BE"}}, {"team": "Групповые_продукты", "task": "№4 Доработка Семейной безопасности: Блокировка спам-звонков", "resource": "Иван Титов", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-07-27": "FE"}}, {"team": "Групповые_продукты", "task": "№4 Доработка Семейной безопасности: Блокировка спам-звонков", "resource": "Миша Бодров", "role": "QA", "ticket": "", "type": "", "weeks": {"2026-07-27": "QA"}}, {"team": "Групповые_продукты", "task": "Q3 ДГП целевая шаринг МегаСемья 2.0 - реализация шаринга в МегаСемье 2.0 для перехода на целевое решение", "resource": "Гоша", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-07-06": "SA", "2026-07-13": "SA", "2026-07-20": "SA", "2026-07-27": "SA", "2026-08-03": "SA", "2026-08-10": "SA", "2026-08-17": "SA", "2026-08-24": "SA"}}, {"team": "Групповые_продукты", "task": "Q3 ДГП целевая шаринг МегаСемья 2.0 - реализация шаринга в МегаСемье 2.0 для перехода на целевое решение", "resource": "Иван", "role": "FE", "ticket": "", "type": "", "weeks": {"2026-08-31": "FE", "2026-09-07": "FE", "2026-09-14": "FE", "2026-09-21": "FE"}}, {"team": "Групповые_продукты", "task": "Q3 ДГП целевая шаринг МегаСемья 2.0 - реализация шаринга в МегаСемье 2.0 для перехода на целевое решение", "resource": "Никита", "role": "BE", "ticket": "", "type": "", "weeks": {"2026-08-24": "BE", "2026-08-31": "BE", "2026-09-07": "BE"}}, {"team": "Групповые_продукты", "task": "Q3 ДГП Проработка реализации \"Плати за близких\" в ССМ", "resource": "Гоша", "role": "SA", "ticket": "", "type": "", "weeks": {"2026-07-27": "SA", "2026-08-03": "SA", "2026-08-10": "SA"}}, {"team": "ДИ", "task": "Пересборка линейки FMC", "resource": "SA", "role": "SA", "ticket": "B2CPROD-1055", "type": "", "weeks": {"2026-08-17": "SA", "2026-08-24": "SA"}}, {"team": "ДИ", "task": "Пересборка линейки FMC", "resource": "BE", "role": "BE", "ticket": "B2CPROD-1055", "type": "", "weeks": {"2026-08-24": "BE", "2026-08-31": "BE", "2026-09-07": "BE"}}, {"team": "ДИ", "task": "Пересборка линейки FMC", "resource": "FE", "role": "FE", "ticket": "B2CPROD-1055", "type": "", "weeks": {"2026-08-31": "FE", "2026-09-07": "FE", "2026-09-14": "FE"}}, {"team": "ДИ", "task": "Пересборка линейки FMC", "resource": "SA", "role": "SA", "ticket": "B2CPROD-1055", "type": "", "weeks": {"2026-07-20": "SA"}}, {"team": "ДИ", "task": "Пересборка линейки FMC", "resource": "QA", "role": "QA", "ticket": "B2CPROD-1055", "type": "", "weeks": {"2026-08-31": "QA", "2026-09-07": "QA", "2026-09-14": "QA", "2026-09-21": "QA", "2026-09-28": "QA"}}, {"team": "ДИ", "task": "ЛК. Определить наполнение раздела и точку входа для действующих абонентов с ДИ", "resource": "BE", "role": "BE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-06-29": "BE", "2026-07-06": "BE", "2026-07-13": "BE", "2026-07-20": "BE", "2026-07-27": "BE"}}, {"team": "ДИ", "task": "ЛК. Определить наполнение раздела и точку входа для действующих абонентов с ДИ", "resource": "FE", "role": "FE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-06-29": "FE", "2026-07-06": "FE", "2026-07-13": "FE", "2026-07-20": "FE"}}, {"team": "ДИ", "task": "ЛК. Определить наполнение раздела и точку входа для действующих абонентов с ДИ", "resource": "QA", "role": "QA", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-06-29": "QA", "2026-07-06": "QA", "2026-07-13": "QA", "2026-07-20": "отпуск QA", "2026-07-27": "QA", "2026-08-03": "QA", "2026-08-10": "QA", "2026-08-17": "QA"}}, {"team": "ДИ", "task": "Редактирование заявки", "resource": "BE", "role": "BE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-08-03": "BE", "2026-08-10": "BE"}}, {"team": "ДИ", "task": "Редактирование заявки", "resource": "FE", "role": "FE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-08-03": "FE"}}, {"team": "ДИ", "task": "Редактирование заявки", "resource": "QA", "role": "QA", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-08-24": "QA", "2026-08-31": "QA", "2026-09-07": "QA"}}, {"team": "ДИ", "task": "Рассрочка оборудования", "resource": "BE", "role": "BE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-08-17": "BE", "2026-09-14": "BE"}}, {"team": "ДИ", "task": "Рассрочка оборудования", "resource": "FE", "role": "FE", "ticket": "B2CPROD-579", "type": "", "weeks": {"2026-08-10": "FE"}}, {"team": "ДИ", "task": "Сайт. Упрощение CJ оставления заявки на сайте и создание целевой заявки", "resource": "QA", "role": "QA", "ticket": "B2CPROD-639", "type": "", "weeks": {"2026-06-29": "QA (S)", "2026-07-06": "QA (S)", "2026-07-13": "QA (S)", "2026-07-20": "QA (S)"}}], "conflicts": [{"week": "2026-06-29", "weekLabel": "29.06", "role": "Дизайн", "teams": ["МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] 5G турбо / Настя (диз)", "[МегаИнтернет] Профиль Киноман / Настя (диз)", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн"]}, {"week": "2026-06-29", "weekLabel": "29.06", "role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация"], "tasks": ["[МегаИнтернет] 5G турбо / Володя (SA)", "[Монетизация] Автоматизация информирования (IVR-REPRICE) / аналитика", "[Монетизация] Срок действия в Услугах / аналитика", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Гоша", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Андрей", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Гоша"]}, {"week": "2026-06-29", "weekLabel": "29.06", "role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Создание новых расширителей на полке роуминга / Фронтенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Богдан", "[Групповые продукты] №2 Роли не МФ без ГЕО / Ваня", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Ваня", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Богдан", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / FE"]}, {"week": "2026-06-29", "weekLabel": "29.06", "role": "BE", "teams": ["Групповые продукты", "ДИ"], "tasks": ["[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Никита", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Оля", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Никита", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Никита", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / BE"]}, {"week": "2026-06-29", "weekLabel": "29.06", "role": "QA", "teams": ["Групповые продукты", "ДИ"], "tasks": ["[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша Б", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Антон", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша К", "[Групповые продукты] №2 Роли не МФ без ГЕО / Антон", "[Групповые продукты] №2 Роли не МФ без ГЕО / Миша К", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Антон", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / QA", "[ДИ] Сайт. Упрощение CJ оставления заявки на сайте / QA"]}, {"week": "2026-07-06", "weekLabel": "06.07", "role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация"], "tasks": ["[МегаИнтернет] 5G турбо / Володя (SA)", "[Монетизация] Оптимизация продактс (режим low-power) / аналитика", "[Монетизация] Срок действия в Услугах / аналитика", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Гоша"]}, {"week": "2026-07-06", "weekLabel": "06.07", "role": "Дизайн", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / Настя (диз)", "[Монетизация] Целевая схема скидок и их взаимодействия / дизайн", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн"]}, {"week": "2026-07-06", "weekLabel": "06.07", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / бэк", "[Монетизация] Ускорение главной / бэк", "[Роуминг/VAS] Создание новых расширителей на полке роуминга / Бэкенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Никита", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Оля", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Никита", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / BE"]}, {"week": "2026-07-06", "weekLabel": "06.07", "role": "QA", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / тесты", "[Роуминг/VAS] Создание новых расширителей на полке роуминга / Тестирование", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша Б", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Антон", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша К", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Миша Б", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Антон", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / QA", "[ДИ] Сайт. Упрощение CJ оставления заявки на сайте / QA"]}, {"week": "2026-07-06", "weekLabel": "06.07", "role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Создание новых расширителей на полке роуминга / Фронтенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Ваня", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Богдан", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Ваня", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / FE"]}, {"week": "2026-07-13", "weekLabel": "13.07", "role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] 5G турбо / Володя (SA)", "[Монетизация] Автоматизация информирования (IVR-REPRICE) / аналитика", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Веб-аналитика", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Аналитика", "[Роуминг/VAS] ABC-тест \"Безлимит на Яндекс\" / Веб-аналитика", "[Роуминг/VAS] ABC-тест \"Безлимит на Яндекс\" / Аналитика", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Андрей", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Гоша"]}, {"week": "2026-07-13", "weekLabel": "13.07", "role": "Дизайн", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / Настя (диз)", "[Монетизация] Обновление раздела Инфо / дизайн", "[Монетизация] Целевая схема скидок и их взаимодействия / дизайн", "[Монетизация] Новые автопроды / дизайн", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Дизайн", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Миша Б"]}, {"week": "2026-07-13", "weekLabel": "13.07", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / бэк", "[Монетизация] Срок действия в Услугах / бэк", "[Роуминг/VAS] Новый метод подключения пакетов /bulk / Бэкенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Оля", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Никита", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / BE"]}, {"week": "2026-07-13", "weekLabel": "13.07", "role": "QA", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / тесты", "[Монетизация] Срок действия в Услугах / тесты", "[Роуминг/VAS] Создание новых расширителей на полке роуминга / Тестирование", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша Б", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Антон", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша К", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Миша Б", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Антон", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / QA", "[ДИ] Сайт. Упрощение CJ оставления заявки на сайте / QA"]}, {"week": "2026-07-13", "weekLabel": "13.07", "role": "FE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Срок действия в Услугах / фронт", "[Роуминг/VAS] Создание новых расширителей на полке роуминга / Фронтенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Ваня", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Богдан", "[Групповые продукты] №5 Скидки NORCA для МегаСемьи / Богдан", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / FE"]}, {"week": "2026-07-20", "weekLabel": "20.07", "role": "FE", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] 5G турбо / FE", "[МегаИнтернет] Коммерческий запуск сетей 5G / FE", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Фронтенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Ваня", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Богдан", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / FE"]}, {"week": "2026-07-20", "weekLabel": "20.07", "role": "Дизайн", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / Настя (диз)", "[МегаИнтернет] Коммерческий запуск сетей 5G / Настя (диз)", "[Монетизация] Новые автопроды / дизайн", "[Монетизация] Новая механика списания АП при смене тарифа / дизайн", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн"]}, {"week": "2026-07-20", "weekLabel": "20.07", "role": "SA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / Володя (SA)", "[МегаИнтернет] Коммерческий запуск сетей 5G / Володя (SA)", "[Монетизация] Оптимизация продактс (режим low-power) / аналитика", "[Монетизация] Целевая схема скидок и их взаимодействия / аналитика", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Аналитика", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Гоша", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Андрей", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Гоша", "[ДИ] Пересборка линейки FMC / SA"]}, {"week": "2026-07-20", "weekLabel": "20.07", "role": "QA", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Переезд из монги в ПК (финальные задачи) / тесты", "[Монетизация] Оптимизация продактс (режим low-power) / тесты", "[Монетизация] Автоматизация информирования (IVR-REPRICE) / тесты", "[Монетизация] Срок действия в Услугах / тесты", "[Роуминг/VAS] Создание новых расширителей на полке роуминга / Тестирование", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша Б", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Антон", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша К", "[ДИ] Сайт. Упрощение CJ оставления заявки на сайте / QA"]}, {"week": "2026-07-20", "weekLabel": "20.07", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / бэк", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Никита", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Оля", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / BE"]}, {"week": "2026-07-27", "weekLabel": "27.07", "role": "FE", "teams": ["Групповые продукты", "МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] 5G турбо / FE", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Фронтенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Ваня", "[Групповые продукты] №4 Доработка Семейной безопасности: Блокировк / Иван Титов"]}, {"week": "2026-07-27", "weekLabel": "27.07", "role": "QA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] 5G турбо / QA", "[МегаИнтернет] Коммерческий запуск сетей 5G / QA", "[Монетизация] Оптимизация продактс (режим low-power) / тесты", "[Роуминг/VAS] Создание новых расширителей на полке роуминга / Тестирование", "[Роуминг/VAS] Новый метод подключения пакетов /bulk / Тестирование", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Миша Б", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Антон", "[Групповые продукты] №4 Доработка Семейной безопасности: Блокировк / Миша Бодров", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / QA"]}, {"week": "2026-07-27", "weekLabel": "27.07", "role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / Володя (SA)", "[Монетизация] Обновление раздела Инфо / аналитика", "[Монетизация] Целевая схема скидок и их взаимодействия / аналитика", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Аналитика", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Гоша", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Гоша", "[Групповые продукты] №4 Доработка Семейной безопасности: Блокировк / Андрей", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Гоша", "[Групповые продукты] Q3 ДГП Проработка реализации \"Плати за близки / Гоша"]}, {"week": "2026-07-27", "weekLabel": "27.07", "role": "Дизайн", "teams": ["Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Новые автопроды / дизайн", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн"]}, {"week": "2026-07-27", "weekLabel": "27.07", "role": "BE", "teams": ["Групповые продукты", "ДИ"], "tasks": ["[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Никита", "[Групповые продукты] №4 Доработка Семейной безопасности: Блокировк / Никита Коструб", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / BE"]}, {"week": "2026-08-03", "weekLabel": "03.08", "role": "QA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] 5G турбо / QA", "[Монетизация] Оптимизация продактс (режим low-power) / тесты", "[Роуминг/VAS] Новый метод подключения пакетов /bulk / Тестирование", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Тестирование", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Миша Б", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / QA"]}, {"week": "2026-08-03", "weekLabel": "03.08", "role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / Володя (SA)", "[Монетизация] Новые автопроды / аналитика", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Аналитика", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Гоша", "[Групповые продукты] Q3 ДГП Проработка реализации \"Плати за близки / Гоша"]}, {"week": "2026-08-03", "weekLabel": "03.08", "role": "Дизайн", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Целевая схема возврата / Настя (диз)", "[Монетизация] Новая механика списания АП при смене тарифа / дизайн", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Дизайн"]}, {"week": "2026-08-03", "weekLabel": "03.08", "role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] ABC-тест \"Безлимит на Яндекс\" / Фронтенд", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Ваня", "[ДИ] Редактирование заявки / FE"]}, {"week": "2026-08-03", "weekLabel": "03.08", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Моно-пакет минут на полке роуминга / Бэкенд", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Никита", "[ДИ] Редактирование заявки / BE"]}, {"week": "2026-08-10", "weekLabel": "10.08", "role": "Дизайн", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Целевая схема возврата / Настя (диз)", "[Монетизация] Новая механика списания АП при смене тарифа / дизайн", "[Монетизация] Склеивание АП при подкл-и услуг / дизайн", "[Роуминг/VAS] Режим роуминга / Дизайн"]}, {"week": "2026-08-10", "weekLabel": "10.08", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Обновление раздела Инфо / бэк", "[Монетизация] Ускорение главной / бэк", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Бэкенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Никита", "[ДИ] Редактирование заявки / BE"]}, {"week": "2026-08-10", "weekLabel": "10.08", "role": "FE", "teams": ["ДИ", "Монетизация"], "tasks": ["[Монетизация] Обновление раздела Инфо / фронт", "[Монетизация] Разметка ключевых сценариев / фронт", "[ДИ] Рассрочка оборудования / FE"]}, {"week": "2026-08-10", "weekLabel": "10.08", "role": "QA", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Обновление раздела Инфо / тесты", "[Монетизация] Автоматизация информирования (IVR-REPRICE) / тесты", "[Роуминг/VAS] ABC-тест \"Скрыть разводящую роуминга\" / Тестирование", "[Роуминг/VAS] ABC-тест \"Безлимит на Яндекс\" / Тестирование", "[Групповые продукты] №6 ГЕО у детей: Создание бесплатной подписки  / Миша Б", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / QA"]}, {"week": "2026-08-10", "weekLabel": "10.08", "role": "SA", "teams": ["Групповые продукты", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Новые автопроды / аналитика", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Аналитика", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Гоша", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Гоша", "[Групповые продукты] Q3 ДГП Проработка реализации \"Плати за близки / Гоша"]}, {"week": "2026-08-17", "weekLabel": "17.08", "role": "FE", "teams": ["МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / FE", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Фронтенд"]}, {"week": "2026-08-17", "weekLabel": "17.08", "role": "Дизайн", "teams": ["МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Целевая схема возврата / Настя (диз)", "[Роуминг/VAS] Режим роуминга / Дизайн"]}, {"week": "2026-08-17", "weekLabel": "17.08", "role": "SA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Целевая схема возврата / Володя (SA)", "[Монетизация] Оптимизация продактс (режим low-power) / аналитика", "[Монетизация] Новая механика списания АП при смене тарифа / аналитика", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Аналитика", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Гоша", "[ДИ] Пересборка линейки FMC / SA"]}, {"week": "2026-08-17", "weekLabel": "17.08", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / бэк", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Бэкенд", "[Групповые продукты] №1 Разработка MVP ДГП МегаСемья 2.0 MVP (Мега / Никита", "[ДИ] Рассрочка оборудования / BE"]}, {"week": "2026-08-17", "weekLabel": "17.08", "role": "QA", "teams": ["ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Ускорение главной / тесты", "[Монетизация] Разметка ключевых сценариев / тесты", "[Роуминг/VAS] ABC-тест \"Безлимит на Яндекс\" / Тестирование", "[ДИ] ЛК. Определить наполнение раздела и точку вхо / QA"]}, {"week": "2026-08-24", "weekLabel": "24.08", "role": "QA", "teams": ["ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / QA", "[Монетизация] Оптимизация продактс (режим low-power) / тесты", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Тестирование", "[ДИ] Редактирование заявки / QA"]}, {"week": "2026-08-24", "weekLabel": "24.08", "role": "Дизайн", "teams": ["МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Целевая схема возврата / Настя (диз)", "[Роуминг/VAS] АБ-тест \"Сайт роуминга\" / Дизайн", "[Роуминг/VAS] Работа над конверсией с страниц стран и карто / Дизайн"]}, {"week": "2026-08-24", "weekLabel": "24.08", "role": "SA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Целевая схема возврата / Володя (SA)", "[Монетизация] Оптимизация продактс (режим low-power) / аналитика", "[Монетизация] Новая механика списания АП при смене тарифа / аналитика", "[Монетизация] Склеивание АП при подкл-и услуг / аналитика", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Аналитика", "[Роуминг/VAS] Режим роуминга / ADR", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Гоша", "[ДИ] Пересборка линейки FMC / SA"]}, {"week": "2026-08-24", "weekLabel": "24.08", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / бэк", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Никита", "[ДИ] Пересборка линейки FMC / BE"]}, {"week": "2026-08-31", "weekLabel": "31.08", "role": "QA", "teams": ["ДИ", "Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Оптимизация продактс (режим low-power) / тесты", "[Роуминг/VAS] Моно-пакет минут на полке роуминга / Тестирование", "[ДИ] Пересборка линейки FMC / QA", "[ДИ] Редактирование заявки / QA"]}, {"week": "2026-08-31", "weekLabel": "31.08", "role": "SA", "teams": ["Монетизация", "Роуминг/VAS"], "tasks": ["[Монетизация] Склеивание АП при подкл-и услуг / аналитика", "[Роуминг/VAS] Режим роуминга / ADR"]}, {"week": "2026-08-31", "weekLabel": "31.08", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Бэкенд", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Никита", "[ДИ] Пересборка линейки FMC / BE"]}, {"week": "2026-08-31", "weekLabel": "31.08", "role": "FE", "teams": ["Групповые продукты", "ДИ"], "tasks": ["[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Иван", "[ДИ] Пересборка линейки FMC / FE"]}, {"week": "2026-09-07", "weekLabel": "07.09", "role": "QA", "teams": ["ДИ", "МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / QA", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Тестирование", "[ДИ] Пересборка линейки FMC / QA", "[ДИ] Редактирование заявки / QA"]}, {"week": "2026-09-07", "weekLabel": "07.09", "role": "Дизайн", "teams": ["МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Страховка как отдельный продукт / Настя (диз)", "[Роуминг/VAS] Режим роуминга / Дизайн"]}, {"week": "2026-09-07", "weekLabel": "07.09", "role": "BE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Бэкенд", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Никита", "[ДИ] Пересборка линейки FMC / BE"]}, {"week": "2026-09-07", "weekLabel": "07.09", "role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Фронтенд", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Иван", "[ДИ] Пересборка линейки FMC / FE"]}, {"week": "2026-09-14", "weekLabel": "14.09", "role": "SA", "teams": ["МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Целевая схема возврата / Володя (SA)", "[Роуминг/VAS] Режим роуминга / Аналитика"]}, {"week": "2026-09-14", "weekLabel": "14.09", "role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Фронтенд", "[Групповые продукты] Q3 ДГП целевая шаринг МегаСемья 2.0 - реализа / Иван", "[ДИ] Пересборка линейки FMC / FE"]}, {"week": "2026-09-14", "weekLabel": "14.09", "role": "QA", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Тестирование", "[ДИ] Пересборка линейки FMC / QA"]}, {"week": "2026-09-21", "weekLabel": "21.09", "role": "SA", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Страховка как отдельный продукт / Володя (SA)", "[Монетизация] Склеивание АП при подкл-и услуг / аналитика", "[Роуминг/VAS] Режим роуминга / Аналитика"]}, {"week": "2026-09-21", "weekLabel": "21.09", "role": "QA", "teams": ["ДИ", "Роуминг/VAS"], "tasks": ["[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Тестирование", "[ДИ] Пересборка линейки FMC / QA"]}, {"week": "2026-09-28", "weekLabel": "28.09", "role": "FE", "teams": ["МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / FE", "[Роуминг/VAS] Режим роуминга / Фронтенд"]}, {"week": "2026-09-28", "weekLabel": "28.09", "role": "QA", "teams": ["ДИ", "МегаИнтернет", "Роуминг/VAS"], "tasks": ["[МегаИнтернет] Профиль Киноман / QA", "[Роуминг/VAS] Смена номера \"Улучшение воронки\" / Тестирование", "[ДИ] Пересборка линейки FMC / QA"]}], "weekly": [{"week": "2026-06-29", "weekLabel": "29.06", "total": 30, "counts": {"МегаИнтернет": 3, "Монетизация": 3, "Роуминг/VAS": 3, "Групповые продукты": 17, "ДИ": 4}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "Дизайн", "teams": ["МегаИнтернет", "Роуминг/VAS"]}, {"role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация"]}, {"role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ"]}, {"role": "QA", "teams": ["Групповые продукты", "ДИ"]}]}, {"week": "2026-07-06", "weekLabel": "06.07", "total": 29, "counts": {"МегаИнтернет": 2, "Монетизация": 6, "Роуминг/VAS": 5, "Групповые продукты": 12, "ДИ": 4}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация"]}, {"role": "Дизайн", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "QA", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"]}]}, {"week": "2026-07-13", "weekLabel": "13.07", "total": 37, "counts": {"МегаИнтернет": 2, "Монетизация": 9, "Роуминг/VAS": 9, "Групповые продукты": 13, "ДИ": 4}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "QA", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "FE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}]}, {"week": "2026-07-20", "weekLabel": "20.07", "total": 37, "counts": {"МегаИнтернет": 8, "Монетизация": 9, "Роуминг/VAS": 5, "Групповые продукты": 10, "ДИ": 5}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "FE", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "SA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "QA", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация"]}]}, {"week": "2026-07-27", "weekLabel": "27.07", "total": 31, "counts": {"МегаИнтернет": 5, "Монетизация": 5, "Роуминг/VAS": 7, "Групповые продукты": 12, "ДИ": 2}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "FE", "teams": ["Групповые продукты", "МегаИнтернет", "Роуминг/VAS"]}, {"role": "QA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ"]}]}, {"week": "2026-08-03", "weekLabel": "03.08", "total": 21, "counts": {"МегаИнтернет": 4, "Монетизация": 3, "Роуминг/VAS": 6, "Групповые продукты": 5, "ДИ": 3}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "QA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "SA", "teams": ["Групповые продукты", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"]}]}, {"week": "2026-08-10", "weekLabel": "10.08", "total": 24, "counts": {"МегаИнтернет": 2, "Монетизация": 9, "Роуминг/VAS": 5, "Групповые продукты": 5, "ДИ": 3}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "Дизайн", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "FE", "teams": ["ДИ", "Монетизация"]}, {"role": "QA", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "SA", "teams": ["Групповые продукты", "Монетизация", "Роуминг/VAS"]}]}, {"week": "2026-08-17", "weekLabel": "17.08", "total": 19, "counts": {"МегаИнтернет": 4, "Монетизация": 5, "Роуминг/VAS": 5, "Групповые продукты": 2, "ДИ": 3}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "FE", "teams": ["МегаИнтернет", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["МегаИнтернет", "Роуминг/VAS"]}, {"role": "SA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "QA", "teams": ["ДИ", "Монетизация", "Роуминг/VAS"]}]}, {"week": "2026-08-24", "weekLabel": "24.08", "total": 20, "counts": {"МегаИнтернет": 4, "Монетизация": 5, "Роуминг/VAS": 6, "Групповые продукты": 2, "ДИ": 3}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "QA", "teams": ["ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["МегаИнтернет", "Роуминг/VAS"]}, {"role": "SA", "teams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Монетизация"]}]}, {"week": "2026-08-31", "weekLabel": "31.08", "total": 15, "counts": {"Монетизация": 2, "Роуминг/VAS": 7, "Групповые продукты": 2, "ДИ": 4}, "activeTeams": ["Групповые продукты", "ДИ", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "QA", "teams": ["ДИ", "Монетизация", "Роуминг/VAS"]}, {"role": "SA", "teams": ["Монетизация", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"]}, {"role": "FE", "teams": ["Групповые продукты", "ДИ"]}]}, {"week": "2026-09-07", "weekLabel": "07.09", "total": 14, "counts": {"МегаИнтернет": 3, "Роуминг/VAS": 5, "Групповые продукты": 2, "ДИ": 4}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Роуминг/VAS"], "conflicts": [{"role": "QA", "teams": ["ДИ", "МегаИнтернет", "Роуминг/VAS"]}, {"role": "Дизайн", "teams": ["МегаИнтернет", "Роуминг/VAS"]}, {"role": "BE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"]}, {"role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"]}]}, {"week": "2026-09-14", "weekLabel": "14.09", "total": 10, "counts": {"МегаИнтернет": 2, "Роуминг/VAS": 4, "Групповые продукты": 1, "ДИ": 3}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Роуминг/VAS"], "conflicts": [{"role": "SA", "teams": ["МегаИнтернет", "Роуминг/VAS"]}, {"role": "FE", "teams": ["Групповые продукты", "ДИ", "Роуминг/VAS"]}, {"role": "QA", "teams": ["ДИ", "Роуминг/VAS"]}]}, {"week": "2026-09-21", "weekLabel": "21.09", "total": 6, "counts": {"МегаИнтернет": 1, "Монетизация": 1, "Роуминг/VAS": 2, "Групповые продукты": 1, "ДИ": 1}, "activeTeams": ["Групповые продукты", "ДИ", "МегаИнтернет", "Монетизация", "Роуминг/VAS"], "conflicts": [{"role": "SA", "teams": ["МегаИнтернет", "Монетизация", "Роуминг/VAS"]}, {"role": "QA", "teams": ["ДИ", "Роуминг/VAS"]}]}, {"week": "2026-09-28", "weekLabel": "28.09", "total": 9, "counts": {"МегаИнтернет": 5, "Роуминг/VAS": 3, "ДИ": 1}, "activeTeams": ["ДИ", "МегаИнтернет", "Роуминг/VAS"], "conflicts": [{"role": "FE", "teams": ["МегаИнтернет", "Роуминг/VAS"]}, {"role": "QA", "teams": ["ДИ", "МегаИнтернет", "Роуминг/VAS"]}]}, {"week": "2026-10-05", "weekLabel": "05.10", "total": 4, "counts": {"МегаИнтернет": 1, "Роуминг/VAS": 3}, "activeTeams": ["МегаИнтернет", "Роуминг/VAS"], "conflicts": []}]}
+};
+const PALETTE = [
+  { color: '#2E75B6', bg: '#DDEBF7' },
+  { color: '#C65911', bg: '#FCE4D6' },
+  { color: '#7030A0', bg: '#E4DFEC' },
+  { color: '#BF9000', bg: '#FFF2CC' },
+  { color: '#548235', bg: '#E2EFDA' },
+  { color: '#C00000', bg: '#F8CBAD' },
+  { color: '#385723', bg: '#C6EFCE' },
+  { color: '#1F4E79', bg: '#BDD7EE' },
+];
 
-    function initFilters() {
-      const roles = [...new Set(DATA.entries.map(e => e.role))].sort();
-      const sel = document.getElementById('roleFilter');
-      roles.forEach(r => { const o = document.createElement('option'); o.value = r; o.textContent = r; sel.appendChild(o); });
+export const TASK_LABEL_LIMIT = 45;
 
-      const chips = document.getElementById('teamChips');
-      TEAM_KEYS.forEach(key => {
-        const cfg = DATA.teams[key];
-        const c = document.createElement('button');
-        c.className = 'chip on';
-        c.dataset.team = key;
-        c.textContent = cfg.full;
-        c.style.background = cfg.color;
-        c.onclick = () => {
-          if (activeTeams.has(key)) { activeTeams.delete(key); c.classList.remove('on'); c.style.background = ''; }
-          else { activeTeams.add(key); c.classList.add('on'); c.style.background = cfg.color; }
-          renderAll();
-        };
-        chips.appendChild(c);
-      });
+export function teamFull(teams, key) {
+  return (teams && teams[key] && teams[key].full) || key;
+}
 
-      document.getElementById('search').oninput = renderAll;
-      document.getElementById('roleFilter').onchange = renderAll;
+export function truncateTask(task, limit = TASK_LABEL_LIMIT) {
+  const text = task == null ? '' : String(task);
+  return text.length > limit ? text.slice(0, limit) : text;
+}
 
-      document.querySelectorAll('.tab').forEach(btn => {
-        btn.onclick = () => {
-          document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-          document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-          btn.classList.add('active');
-          document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
-        };
-      });
+export function isVacation(value) {
+  return String(value || '').toLowerCase().includes('отпуск');
+}
+
+export function conflictTaskLabel(teams, entry) {
+  const full = teamFull(teams, entry.team);
+  return `[${full}] ${truncateTask(entry.task || '')} / ${entry.resource || ''}`;
+}
+
+export function normalizeTeams(rawTeams = {}, entries = []) {
+  const teams = { ...rawTeams };
+  for (const entry of entries) {
+    if (entry.team && !teams[entry.team]) {
+      teams[entry.team] = { full: String(entry.team).replace(/_/g, '/') };
     }
-
-    function renderStats() {
-      const el = document.getElementById('stats');
-      const active = DATA.entries.filter(e => Object.keys(e.weeks).length > 0);
-      el.innerHTML = [
-        ['Задач/ресурсов', active.length],
-        ['Пересечений', DATA.conflicts.length],
-        ['Недель', DATA.weeks.length],
-        ['Команд', TEAM_KEYS.length],
-      ].map(([l,v]) => `<div class="stat"><div class="val">${v}</div><div class="lbl">${l}</div></div>`).join('');
+  }
+  const normalized = {};
+  Object.keys(teams).forEach((key, index) => {
+    const value = teams[key];
+    const palette = PALETTE[index % PALETTE.length];
+    if (typeof value === 'string') {
+      normalized[key] = { full: value, color: palette.color, bg: palette.bg };
+      return;
     }
+    normalized[key] = {
+      full: value.full || key.replace(/_/g, '/'),
+      color: value.color || palette.color,
+      bg: value.bg || palette.bg,
+    };
+  });
+  return normalized;
+}
 
-    function filterEntries() {
-      const q = document.getElementById('search').value.toLowerCase();
-      const role = document.getElementById('roleFilter').value;
-      return DATA.entries.filter(e => {
-        if (!activeTeams.has(e.team)) return false;
-        if (role && e.role !== role) return false;
-        if (q && !(`${e.task} ${e.resource} ${e.ticket} ${e.role}`.toLowerCase().includes(q))) return false;
-        return Object.keys(e.weeks).length > 0;
-      });
-    }
+export function normalizeWeeks(rawWeeks, entries = []) {
+  if (Array.isArray(rawWeeks) && rawWeeks.length) {
+    return rawWeeks.map((week) => ({
+      iso: week.iso || week.date || week.start,
+      label: week.label || formatWeekLabel(week.iso || week.date || week.start),
+    }));
+  }
+  const isoSet = new Set();
+  for (const entry of entries) {
+    Object.keys(entry.weeks || {}).forEach((iso) => isoSet.add(iso));
+  }
+  return [...isoSet].sort().map((iso) => ({ iso, label: formatWeekLabel(iso) }));
+}
 
-    function isConflictWeekRole(weekIso, role) {
-      return DATA.conflicts.some(c => c.week === weekIso && c.role === role);
-    }
+export function formatWeekLabel(iso) {
+  if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso || '';
+  const [, month, day] = iso.split('-');
+  return `${day}.${month}`;
+}
 
-    function teamBadge(team) {
-      const cfg = DATA.teams[team];
-      return `<span class="team-badge" style="background:${cfg.bg};color:${cfg.color}">${cfg.full}</span>`;
-    }
+export function processTimeline(raw = {}) {
+  const entries = Array.isArray(raw.entries) ? raw.entries : [];
+  const teams = normalizeTeams(raw.teams, entries);
+  const weeks = normalizeWeeks(raw.weeks, entries);
+  const conflicts = [];
+  const weekly = [];
 
-    function renderGantt() {
-      const entries = filterEntries();
-      const thead = document.querySelector('#ganttTable thead');
-      const tbody = document.querySelector('#ganttTable tbody');
-      const weekHeaders = DATA.weeks.map(w => `<th>${w.label}</th>`).join('');
-      thead.innerHTML = `<tr><th data-col="team">Команда</th><th data-col="task">Задача</th><th data-col="resource">Ресурс</th><th data-col="role">Роль</th><th data-col="ticket">Тикет</th>${weekHeaders}</tr>`;
-
-      if (!entries.length) {
-        tbody.innerHTML = `<tr><td colspan="${5 + DATA.weeks.length}" class="empty">Нет данных по фильтрам</td></tr>`;
-        return;
+  for (const week of weeks) {
+    const hasWork = new Set();
+    for (const entry of entries) {
+      const value = entry.weeks && entry.weeks[week.iso];
+      if (value && !isVacation(value)) {
+        hasWork.add(`${entry.team}\0${entry.role || ''}`);
       }
-
-      tbody.innerHTML = entries.map(e => {
-        const cfg = DATA.teams[e.team];
-        const cells = DATA.weeks.map(w => {
-          const val = e.weeks[w.iso];
-          if (!val) return '<td class="week-cell"></td>';
-          const cls = isConflictWeekRole(w.iso, e.role) ? 'week-cell filled conflict' : 'week-cell filled';
-          const bg = isConflictWeekRole(w.iso, e.role) ? '' : `background:${cfg.color};color:#fff;`;
-          return `<td class="${cls}" style="${bg}" title="${val}">${val.length > 6 ? val.slice(0,5)+'…' : val}</td>`;
-        }).join('');
-        return `<tr>
-          <td>${teamBadge(e.team)}</td>
-          <td>${esc(e.task)}</td>
-          <td>${esc(e.resource)}</td>
-          <td>${esc(e.role)}</td>
-          <td>${esc(e.ticket)}</td>${cells}</tr>`;
-      }).join('');
-
-      bindSort('#ganttTable', entries, renderGantt);
     }
 
-    function renderConflicts() {
-      const q = document.getElementById('search').value.toLowerCase();
-      const role = document.getElementById('roleFilter').value;
-      let rows = DATA.conflicts.filter(c => {
-        if (role && c.role !== role) return false;
-        if (!c.teams.some(t => { const k = Object.entries(DATA.teams).find(([_,v]) => v.full === t)?.[0]; return k && activeTeams.has(k); })) return false;
-        if (q && !(c.role + c.teams.join() + c.tasks.join()).toLowerCase().includes(q)) return false;
-        return true;
-      });
+    const byRole = new Map();
+    const counts = {};
+    let total = 0;
 
-      const thead = document.querySelector('#conflictsTable thead');
-      const tbody = document.querySelector('#conflictsTable tbody');
-      thead.innerHTML = '<tr><th>Неделя</th><th>Роль</th><th>Команды</th><th>Задачи</th></tr>';
-
-      if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty">Нет пересечений по фильтрам</td></tr>';
-        return;
+    for (const entry of entries) {
+      const value = entry.weeks && entry.weeks[week.iso];
+      if (!value) continue;
+      total += 1;
+      const full = teamFull(teams, entry.team);
+      counts[full] = (counts[full] || 0) + 1;
+      const role = entry.role || '';
+      if (!byRole.has(role)) {
+        byRole.set(role, { teams: new Set(), tasks: [] });
       }
-
-      tbody.innerHTML = rows.map(c => `<tr class="conflict-row">
-        <td>${c.weekLabel}</td>
-        <td><strong>${esc(c.role)}</strong></td>
-        <td>${c.teams.map(t => `<span class="team-badge" style="background:#ffc7ce;color:#9c0006;margin:1px">${esc(t)}</span>`).join(' ')}</td>
-        <td><div class="conflict-tasks">${c.tasks.slice(0,5).map(esc).join('<br>')}${c.tasks.length > 5 ? `<br>… +${c.tasks.length-5}` : ''}</div></td>
-      </tr>`).join('');
+      const bucket = byRole.get(role);
+      bucket.teams.add(full);
+      if (isVacation(value) && hasWork.has(`${entry.team}\0${role}`)) continue;
+      bucket.tasks.push(conflictTaskLabel(teams, entry));
     }
 
-    function renderWeekly() {
-      const thead = document.querySelector('#weeklyTable thead');
-      const tbody = document.querySelector('#weeklyTable tbody');
-      const teamHeaders = TEAM_KEYS.map(k => `<th>${DATA.teams[k].full}</th>`).join('');
-      thead.innerHTML = `<tr><th>Неделя</th><th>Всего</th>${teamHeaders}<th>Команды</th><th>Конфликты</th></tr>`;
-
-      tbody.innerHTML = DATA.weekly.map(w => {
-        const hasConflict = w.conflicts.length > 0;
-        const multiTeam = w.activeTeams.length >= 2;
-        const cls = hasConflict ? 'conflict-row' : (multiTeam ? 'multi-row' : '');
-        const conflicts = w.conflicts.map(c => `${c.role} (${c.teams.join('+')})`).join('; ');
-        const teamCells = TEAM_KEYS.map(k => {
-          const name = DATA.teams[k].full;
-          return `<td>${w.counts[name] ?? w.counts[k] ?? 0}</td>`;
-        }).join('');
-        return `<tr class="${cls}">
-          <td>${w.weekLabel}</td>
-          <td><strong>${w.total}</strong></td>
-          ${teamCells}
-          <td>${w.activeTeams.join(', ')}</td>
-          <td style="color:var(--danger)">${esc(conflicts)}</td>
-        </tr>`;
-      }).join('');
+    const weekConflicts = [];
+    for (const [role, info] of byRole) {
+      if (info.teams.size < 2) continue;
+      const teamList = [...info.teams].sort((a, b) => a.localeCompare(b, 'ru'));
+      const conflict = {
+        week: week.iso,
+        weekLabel: week.label,
+        role,
+        teams: teamList,
+        tasks: info.tasks,
+      };
+      conflicts.push(conflict);
+      weekConflicts.push({ role, teams: teamList });
     }
 
-    function renderAll() {
-      renderGantt();
-      renderConflicts();
-      renderWeekly();
-    }
-
-    function esc(s) {
-      if (!s) return '';
-      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
-
-    function bindSort(selector, data, rerender) {
-      document.querySelectorAll(`${selector} th[data-col]`).forEach(th => {
-        th.onclick = () => {
-          const col = th.dataset.col;
-          if (sortState.col === col) sortState.asc = !sortState.asc;
-          else { sortState.col = col; sortState.asc = true; }
-          data.sort((a, b) => {
-            const av = (a[col] || a.team || '').toString();
-            const bv = (b[col] || b.team || '').toString();
-            return sortState.asc ? av.localeCompare(bv, 'ru') : bv.localeCompare(av, 'ru');
-          });
-          rerender();
-        };
-      });
-    }
-
-    loadData().catch(err => {
-      document.querySelector('.container').innerHTML = `<div class="empty" style="padding:4rem">
-        <h2>Не удалось загрузить data.json</h2>
-        <p style="margin-top:1rem;color:var(--muted)">Запустите локальный сервер в папке interactive:<br><code>python3 -m http.server 8080</code></p>
-        <p style="margin-top:.5rem;color:var(--muted)">${err.message}</p>
-      </div>`;
+    weekly.push({
+      week: week.iso,
+      weekLabel: week.label,
+      total,
+      counts,
+      activeTeams: Object.keys(counts).sort((a, b) => a.localeCompare(b, 'ru')),
+      conflicts: weekConflicts,
     });
-  </script>
+  }
+
+  return {
+    generated: raw.generated || null,
+    title: raw.title || null,
+    teams,
+    weeks,
+    entries,
+    conflicts,
+    weekly,
+  };
+}
+
+export function roleMatrix(data) {
+  const roles = [...new Set(data.entries.map((entry) => entry.role || ''))].sort((a, b) =>
+    a.localeCompare(b, 'ru')
+  );
+  const rows = roles.map((role) => {
+    const cells = data.weeks.map((week) => {
+      const teams = new Set();
+      let busy = 0;
+      let vacation = 0;
+      for (const entry of data.entries) {
+        const value = entry.weeks && entry.weeks[week.iso];
+        if (!value || (entry.role || '') !== role) continue;
+        teams.add(teamFull(data.teams, entry.team));
+        if (isVacation(value)) vacation += 1;
+        else busy += 1;
+      }
+      return {
+        week: week.iso,
+        weekLabel: week.label,
+        teams: [...teams].sort((a, b) => a.localeCompare(b, 'ru')),
+        busy,
+        vacation,
+        conflict: teams.size >= 2,
+      };
+    });
+    return { role, cells };
+  });
+  return rows;
+}
+
+
+const state = {
+  catalog: [],
+  timelineId: null,
+  data: null,
+  teamKeys: [],
+  activeTeams: new Set(),
+  role: '',
+  type: '',
+  query: '',
+  week: '',
+  tab: 'gantt',
+  sort: { col: null, asc: true },
+};
+
+function esc(value) {
+  if (!value) return '';
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function currentWeekIso(weeks) {
+  const today = new Date();
+  const todayKey = today.toISOString().slice(0, 10);
+  let current = weeks[0]?.iso || '';
+  for (const week of weeks) {
+    if (week.iso <= todayKey) current = week.iso;
+  }
+  return current;
+}
+
+function teamBadge(teamKey) {
+  const cfg = state.data.teams[teamKey];
+  if (!cfg) return esc(teamKey);
+  return `<span class="team-badge" style="background:${cfg.bg};color:${cfg.color}">${esc(cfg.full)}</span>`;
+}
+
+function badgeByFullName(fullName) {
+  const entry = Object.entries(state.data.teams).find(([, cfg]) => cfg.full === fullName);
+  if (!entry) return `<span class="team-badge">${esc(fullName)}</span>`;
+  return teamBadge(entry[0]);
+}
+
+function uniqueSorted(values) {
+  return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru'));
+}
+
+async function fetchJson(path) {
+  if (window.EMBEDDED_FILES && window.EMBEDDED_FILES[path]) {
+    return JSON.parse(JSON.stringify(window.EMBEDDED_FILES[path]));
+  }
+  const res = await fetch(path, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`${path}: ${res.status}`);
+  return res.json();
+}
+
+async function loadCatalog() {
+  try {
+    const catalog = await fetchJson('timelines.json');
+    state.catalog = catalog.timelines || [];
+    return catalog.default || state.catalog[0]?.id;
+  } catch {
+    state.catalog = [{ id: 'q3-2026', title: '3Q 2026', period: '', file: 'data.json' }];
+    return 'q3-2026';
+  }
+}
+
+async function loadTimeline(id) {
+  const meta = state.catalog.find((item) => item.id === id) || state.catalog[0];
+  if (!meta) throw new Error('Нет таймлайнов в каталоге');
+  const raw = await fetchJson(meta.file);
+  state.timelineId = meta.id;
+  state.data = processTimeline(raw);
+  state.teamKeys = Object.keys(state.data.teams);
+  state.activeTeams = new Set(state.teamKeys);
+  state.role = '';
+  state.type = '';
+  state.query = '';
+  state.week = '';
+  state.sort = { col: null, asc: true };
+  document.title = `${meta.title} — Календаризация команд`;
+  document.getElementById('subtitle').textContent = meta.period
+    ? `${meta.period} · ресурсы и пересечения`
+    : 'Ресурсы, роли и пересечения по неделям';
+  const generated = state.data.generated
+    ? 'обновлено ' + new Date(state.data.generated).toLocaleString('ru-RU')
+    : 'пересечения считаются автоматически';
+  document.getElementById('generated').textContent = generated;
+}
+
+function renderTimelineSwitch() {
+  const root = document.getElementById('timelineSwitch');
+  root.innerHTML = state.catalog.map((item) => {
+    const active = item.id === state.timelineId ? 'active' : '';
+    return `<button class="timeline-btn ${active}" data-id="${esc(item.id)}">${esc(item.title)}</button>`;
+  }).join('');
+  root.querySelectorAll('button').forEach((btn) => {
+    btn.onclick = async () => {
+      if (btn.dataset.id === state.timelineId) return;
+      await loadTimeline(btn.dataset.id);
+      const url = new URL(window.location.href);
+      url.searchParams.set('timeline', state.timelineId);
+      history.replaceState({}, '', url);
+      bindStaticControls();
+      renderAll();
+    };
+  });
+}
+
+function bindStaticControls() {
+  const roleSel = document.getElementById('roleFilter');
+  const typeSel = document.getElementById('typeFilter');
+  const search = document.getElementById('search');
+  roleSel.innerHTML = '<option value="">Все роли</option>';
+  uniqueSorted(state.data.entries.map((entry) => entry.role)).forEach((role) => {
+    const option = document.createElement('option');
+    option.value = role;
+    option.textContent = role;
+    roleSel.appendChild(option);
+  });
+  typeSel.innerHTML = '<option value="">Все типы</option>';
+  uniqueSorted(state.data.entries.map((entry) => entry.type)).forEach((type) => {
+    const option = document.createElement('option');
+    option.value = type;
+    option.textContent = type;
+    typeSel.appendChild(option);
+  });
+  const chips = document.getElementById('teamChips');
+  chips.innerHTML = '';
+  state.teamKeys.forEach((key) => {
+    const cfg = state.data.teams[key];
+    const chip = document.createElement('button');
+    chip.className = 'chip on';
+    chip.textContent = cfg.full;
+    chip.style.background = cfg.color;
+    chip.onclick = () => {
+      if (state.activeTeams.has(key)) {
+        state.activeTeams.delete(key);
+        chip.classList.remove('on');
+        chip.style.background = '';
+      } else {
+        state.activeTeams.add(key);
+        chip.classList.add('on');
+        chip.style.background = cfg.color;
+      }
+      renderAll();
+    };
+    chips.appendChild(chip);
+  });
+  search.value = '';
+  roleSel.value = '';
+  typeSel.value = '';
+  search.oninput = () => {
+    state.query = search.value.toLowerCase();
+    renderAll();
+  };
+  roleSel.onchange = () => {
+    state.role = roleSel.value;
+    renderAll();
+  };
+  typeSel.onchange = () => {
+    state.type = typeSel.value;
+    renderAll();
+  };
+}
+
+function matchesFilters(entry) {
+  if (!state.activeTeams.has(entry.team)) return false;
+  if (state.role && entry.role !== state.role) return false;
+  if (state.type && entry.type !== state.type) return false;
+  if (state.week && !entry.weeks[state.week]) return false;
+  if (state.query) {
+    const hay = `${entry.task} ${entry.resource} ${entry.ticket} ${entry.role} ${entry.type}`.toLowerCase();
+    if (!hay.includes(state.query)) return false;
+  }
+  return Object.keys(entry.weeks || {}).length > 0;
+}
+
+function filterEntries() {
+  const entries = state.data.entries.filter(matchesFilters);
+  const col = state.sort.col;
+  if (!col) return entries;
+  return [...entries].sort((a, b) => {
+    const av = (a[col] || '').toString();
+    const bv = (b[col] || '').toString();
+    return state.sort.asc ? av.localeCompare(bv, 'ru') : bv.localeCompare(av, 'ru');
+  });
+}
+
+function isConflictWeekRole(weekIso, role) {
+  return state.data.conflicts.some((conflict) => conflict.week === weekIso && conflict.role === role);
+}
+
+function renderStats() {
+  const active = state.data.entries.filter((entry) => Object.keys(entry.weeks || {}).length > 0);
+  const visible = filterEntries();
+  document.getElementById('stats').innerHTML = [
+    ['Строк в плане', visible.length, `из ${active.length}`],
+    ['Пересечений', state.data.conflicts.length, 'роль × неделя'],
+    ['Недель', state.data.weeks.length, state.data.weeks[0]?.label + ' — ' + state.data.weeks.at(-1)?.label],
+    ['Команд', state.teamKeys.length, 'в выбранном таймлайне'],
+  ].map(([label, value, hint]) => `
+    <article class="stat">
+      <div class="val">${esc(value)}</div>
+      <div class="lbl">${esc(label)}</div>
+      <div class="muted">${esc(hint || '')}</div>
+    </article>
+  `).join('');
+}
+
+function renderHeatmap() {
+  const current = currentWeekIso(state.data.weeks);
+  document.getElementById('heatmap').innerHTML = state.data.weekly.map((week) => {
+    const hot = week.conflicts.length >= 4;
+    const warm = week.conflicts.length >= 1 && !hot;
+    const on = state.week === week.week ? 'on' : '';
+    const now = week.week === current ? 'current' : '';
+    const cls = ['heat-cell', hot ? 'hot' : '', warm ? 'warm' : '', on, now].filter(Boolean).join(' ');
+    return `<button class="${cls}" data-week="${week.week}">
+      <div class="w">${esc(week.weekLabel)}</div>
+      <div class="n">${week.total}</div>
+      <div class="w">${week.conflicts.length ? week.conflicts.length + ' пересеч.' : 'без пересечений'}</div>
+    </button>`;
+  }).join('');
+  document.querySelectorAll('#heatmap [data-week]').forEach((btn) => {
+    btn.onclick = () => {
+      state.week = state.week === btn.dataset.week ? '' : btn.dataset.week;
+      renderAll();
+    };
+  });
+}
+
+function bindSort(selector, rerender) {
+  document.querySelectorAll(`${selector} th[data-col]`).forEach((th) => {
+    th.onclick = () => {
+      const col = th.dataset.col;
+      if (state.sort.col === col) state.sort.asc = !state.sort.asc;
+      else {
+        state.sort.col = col;
+        state.sort.asc = true;
+      }
+      rerender();
+    };
+  });
+}
+
+function renderGantt() {
+  const entries = filterEntries();
+  const current = currentWeekIso(state.data.weeks);
+  const thead = document.querySelector('#ganttTable thead');
+  const tbody = document.querySelector('#ganttTable tbody');
+  const weekHeaders = state.data.weeks.map((week) => {
+    const cls = week.iso === current ? 'current-week' : '';
+    return `<th class="${cls}">${esc(week.label)}</th>`;
+  }).join('');
+  thead.innerHTML = `<tr>
+    <th class="sticky-col col-team" data-col="team">Команда</th>
+    <th class="sticky-col col-task" data-col="task">Задача</th>
+    <th data-col="resource">Ресурс</th>
+    <th data-col="role">Роль</th>
+    <th data-col="ticket">Тикет</th>
+    ${weekHeaders}
+  </tr>`;
+
+  if (!entries.length) {
+    tbody.innerHTML = `<tr><td colspan="${5 + state.data.weeks.length}" class="empty">Нет данных по фильтрам</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = entries.map((entry) => {
+    const cfg = state.data.teams[entry.team];
+    const cells = state.data.weeks.map((week) => {
+      const value = entry.weeks[week.iso];
+      const currentCls = week.iso === current ? 'current-week' : '';
+      if (!value) return `<td class="week-cell ${currentCls}"></td>`;
+      const vacation = isVacation(value);
+      const conflict = isConflictWeekRole(week.iso, entry.role);
+      const cls = [
+        'week-cell',
+        'filled',
+        vacation ? 'vacation' : '',
+        !vacation && conflict ? 'conflict' : '',
+        currentCls,
+      ].filter(Boolean).join(' ');
+      const bg = vacation || conflict ? '' : `background:${cfg.color};color:#fff;`;
+      const shown = value.length > 8 ? `${value.slice(0, 7)}…` : value;
+      return `<td class="${cls}" style="${bg}" title="${esc(value)}">${esc(shown)}</td>`;
+    }).join('');
+    return `<tr>
+      <td class="sticky-col col-team">${teamBadge(entry.team)}</td>
+      <td class="sticky-col col-task task-cell">${esc(entry.task)}</td>
+      <td>${esc(entry.resource)}</td>
+      <td>${esc(entry.role)}</td>
+      <td>${esc(entry.ticket)}</td>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  bindSort('#ganttTable', renderGantt);
+}
+
+function renderConflicts() {
+  const rows = state.data.conflicts.filter((conflict) => {
+    if (state.role && conflict.role !== state.role) return false;
+    if (state.week && conflict.week !== state.week) return false;
+    const teamMatch = conflict.teams.some((full) => {
+      const key = Object.entries(state.data.teams).find(([, cfg]) => cfg.full === full)?.[0];
+      return key && state.activeTeams.has(key);
+    });
+    if (!teamMatch) return false;
+    if (state.query && !(conflict.role + conflict.teams.join() + conflict.tasks.join()).toLowerCase().includes(state.query)) {
+      return false;
+    }
+    return true;
+  });
+
+  const thead = document.querySelector('#conflictsTable thead');
+  const tbody = document.querySelector('#conflictsTable tbody');
+  thead.innerHTML = '<tr><th>Неделя</th><th>Роль</th><th>Команды</th><th>Задачи</th></tr>';
+  if (!rows.length) {
+    tbody.innerHTML = '<tr><td colspan="4" class="empty">Нет пересечений по фильтрам</td></tr>';
+    return;
+  }
+  tbody.innerHTML = rows.map((conflict) => `<tr class="conflict-row">
+    <td>${esc(conflict.weekLabel)}</td>
+    <td><strong>${esc(conflict.role)}</strong></td>
+    <td>${conflict.teams.map(badgeByFullName).join(' ')}</td>
+    <td><div class="conflict-tasks">${conflict.tasks.map(esc).join('<br>')}</div></td>
+  </tr>`).join('');
+}
+
+function renderWeekly() {
+  const thead = document.querySelector('#weeklyTable thead');
+  const tbody = document.querySelector('#weeklyTable tbody');
+  const teamHeaders = state.teamKeys.map((key) => `<th>${esc(state.data.teams[key].full)}</th>`).join('');
+  thead.innerHTML = `<tr><th>Неделя</th><th>Всего</th>${teamHeaders}<th>Команды</th><th>Конфликты</th></tr>`;
+  const rows = state.data.weekly.filter((week) => !state.week || week.week === state.week);
+  tbody.innerHTML = rows.map((week) => {
+    const hasConflict = week.conflicts.length > 0;
+    const multiTeam = week.activeTeams.length >= 2;
+    const cls = hasConflict ? 'conflict-row' : (multiTeam ? 'multi-row' : '');
+    const conflicts = week.conflicts.map((item) => `${item.role} (${item.teams.join('+')})`).join('; ');
+    const teamCells = state.teamKeys.map((key) => {
+      const name = state.data.teams[key].full;
+      return `<td>${week.counts[name] ?? week.counts[key] ?? 0}</td>`;
+    }).join('');
+    return `<tr class="${cls}">
+      <td>${esc(week.weekLabel)}</td>
+      <td><strong>${week.total}</strong></td>
+      ${teamCells}
+      <td>${esc(week.activeTeams.join(', '))}</td>
+      <td style="color:var(--danger)">${esc(conflicts)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderRoles() {
+  const matrix = roleMatrix(state.data).filter((row) => !state.role || row.role === state.role);
+  const current = currentWeekIso(state.data.weeks);
+  const thead = document.querySelector('#rolesTable thead');
+  const tbody = document.querySelector('#rolesTable tbody');
+  thead.innerHTML = `<tr><th>Роль</th>${state.data.weeks.map((week) =>
+    `<th class="${week.iso === current ? 'current-week' : ''}">${esc(week.label)}</th>`
+  ).join('')}</tr>`;
+  tbody.innerHTML = matrix.map((row) => {
+    const cells = row.cells.map((cell) => {
+      const count = cell.teams.length;
+      const cls = count >= 2 ? 'role-cell conflict' : (count === 1 ? 'role-cell one' : 'role-cell');
+      const title = count ? `${cell.teams.join(', ')} · занято ${cell.busy}` : 'нет загрузки';
+      return `<td class="${cls}${cell.week === current ? ' current-week' : ''}" title="${esc(title)}">${count || ''}</td>`;
+    }).join('');
+    return `<tr><td><strong>${esc(row.role || '—')}</strong></td>${cells}</tr>`;
+  }).join('');
+}
+
+function renderAll() {
+  renderTimelineSwitch();
+  renderStats();
+  renderHeatmap();
+  renderGantt();
+  renderConflicts();
+  renderWeekly();
+  renderRoles();
+}
+
+function bindTabs() {
+  document.querySelectorAll('.tab').forEach((btn) => {
+    btn.onclick = () => {
+      state.tab = btn.dataset.tab;
+      document.querySelectorAll('.tab').forEach((item) => item.classList.remove('active'));
+      document.querySelectorAll('.panel').forEach((panel) => panel.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
+    };
+  });
+}
+
+async function boot() {
+  try {
+    const defaultId = await loadCatalog();
+    const requested = new URLSearchParams(window.location.search).get('timeline');
+    await loadTimeline(requested || defaultId);
+    bindTabs();
+    bindStaticControls();
+    renderAll();
+  } catch (err) {
+    document.querySelector('.layout').innerHTML = `<div class="error-box">
+      <h2>Не удалось загрузить данные</h2>
+      <p>Запустите локальный сервер в корне репозитория:</p>
+      <p><code>python3 -m http.server 8080</code></p>
+      <p>${esc(err.message)}</p>
+    </div>`;
+  }
+}
+
+boot();
+
+</script>
 </body>
 </html>

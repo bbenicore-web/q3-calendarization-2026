@@ -3,416 +3,77 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Календаризация команд — 3Q 2026</title>
-  <style>
-    :root {
-      --bg: #0f1419;
-      --surface: #1a2332;
-      --surface2: #243044;
-      --border: #2d3a4f;
-      --text: #e8edf4;
-      --muted: #8b9cb3;
-      --accent: #4f8cff;
-      --danger: #ff6b6b;
-      --danger-bg: rgba(255, 107, 107, 0.15);
-      --warn: #ffc857;
-      --warn-bg: rgba(255, 200, 87, 0.12);
-      --radius: 10px;
-      --shadow: 0 4px 24px rgba(0,0,0,.35);
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      min-height: 100vh;
-      line-height: 1.5;
-    }
-    header {
-      background: linear-gradient(135deg, #1a2332 0%, #243044 100%);
-      border-bottom: 1px solid var(--border);
-      padding: 1.25rem 1.5rem;
-    }
-    header h1 { font-size: 1.35rem; font-weight: 700; }
-    header p { color: var(--muted); font-size: 0.875rem; margin-top: 0.25rem; }
-    .container { max-width: 1400px; margin: 0 auto; padding: 1.25rem 1.5rem 3rem; }
-    .stats {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 0.75rem;
-      margin-bottom: 1.25rem;
-    }
-    .stat {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 1rem;
-    }
-    .stat .val { font-size: 1.75rem; font-weight: 700; color: var(--accent); }
-    .stat .lbl { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
-    .tabs {
-      display: flex;
-      gap: 0.5rem;
-      flex-wrap: wrap;
-      margin-bottom: 1rem;
-    }
-    .tab {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      color: var(--muted);
-      padding: 0.55rem 1rem;
-      border-radius: 999px;
-      cursor: pointer;
-      font-size: 0.875rem;
-      transition: all .15s;
-    }
-    .tab:hover { border-color: var(--accent); color: var(--text); }
-    .tab.active { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
-    .panel { display: none; }
-    .panel.active { display: block; }
-    .toolbar {
-      display: flex;
-      gap: 0.75rem;
-      flex-wrap: wrap;
-      align-items: center;
-      margin-bottom: 1rem;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 0.875rem 1rem;
-    }
-    .toolbar label { font-size: 0.8rem; color: var(--muted); }
-    input[type="search"], select {
-      background: var(--surface2);
-      border: 1px solid var(--border);
-      color: var(--text);
-      padding: 0.45rem 0.75rem;
-      border-radius: 6px;
-      font-size: 0.875rem;
-    }
-    input[type="search"] { min-width: 220px; flex: 1; }
-    .chip-group { display: flex; gap: 0.35rem; flex-wrap: wrap; }
-    .chip {
-      padding: 0.3rem 0.65rem;
-      border-radius: 999px;
-      font-size: 0.75rem;
-      cursor: pointer;
-      border: 1px solid var(--border);
-      background: var(--surface2);
-      color: var(--muted);
-      transition: all .12s;
-    }
-    .chip.on { color: #fff; border-color: transparent; font-weight: 600; }
-    .table-wrap {
-      overflow: auto;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      background: var(--surface);
-      box-shadow: var(--shadow);
-      max-height: 70vh;
-    }
-    table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; }
-    th {
-      position: sticky;
-      top: 0;
-      background: var(--surface2);
-      color: var(--muted);
-      text-align: left;
-      padding: 0.65rem 0.75rem;
-      border-bottom: 1px solid var(--border);
-      white-space: nowrap;
-      cursor: pointer;
-      user-select: none;
-      z-index: 2;
-    }
-    th:hover { color: var(--text); }
-    th.sorted { color: var(--accent); }
-    td {
-      padding: 0.55rem 0.75rem;
-      border-bottom: 1px solid var(--border);
-      vertical-align: top;
-    }
-    tr:hover td { background: rgba(79, 140, 255, 0.06); }
-    .team-badge {
-      display: inline-block;
-      padding: 0.15rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.72rem;
-      font-weight: 600;
-      white-space: nowrap;
-    }
-    .conflict-row td { background: var(--danger-bg) !important; }
-    .multi-row td { background: var(--warn-bg) !important; }
-    .week-cell {
-      text-align: center;
-      min-width: 42px;
-      font-size: 0.7rem;
-      font-weight: 600;
-    }
-    .week-cell.filled { border-radius: 3px; }
-    .week-cell.conflict { background: var(--danger) !important; color: #fff; }
-    .legend {
-      display: flex;
-      gap: 1rem;
-      flex-wrap: wrap;
-      font-size: 0.75rem;
-      color: var(--muted);
-      margin-bottom: 0.75rem;
-    }
-    .legend span { display: flex; align-items: center; gap: 0.35rem; }
-    .dot { width: 10px; height: 10px; border-radius: 2px; }
-    .empty { text-align: center; padding: 3rem; color: var(--muted); }
-    .conflict-tasks { font-size: 0.75rem; color: var(--muted); margin-top: 0.25rem; }
-    footer { text-align: center; padding: 1.5rem; color: var(--muted); font-size: 0.75rem; }
-    @media (max-width: 768px) {
-      .container { padding: 1rem; }
-      input[type="search"] { min-width: 100%; }
-    }
-  </style>
+  <title>Календаризация команд</title>
+  <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <header>
-    <div class="container" style="padding-bottom:0;padding-top:0">
-      <h1>Календаризация команд — 3Q 2026</h1>
-      <p>Интерактивная таблица ресурсов и пересечений · <span id="generated"></span></p>
-    </div>
-  </header>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <h1>Календаризация команд</h1>
+          <p id="subtitle">Ресурсы, роли и пересечения по неделям</p>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="timeline-switch" id="timelineSwitch" aria-label="Таймлайны"></div>
+        <div class="updated" id="generated"></div>
+      </div>
+    </header>
 
-  <div class="container">
-    <div class="stats" id="stats"></div>
+    <main class="layout">
+      <section class="stats" id="stats"></section>
+      <section class="heatmap-card">
+        <div class="heatmap-head">
+          <h2>Нагрузка по неделям</h2>
+          <p>Клик по неделе фильтрует таблицы. Повторный клик снимает фильтр.</p>
+        </div>
+        <div class="heatmap" id="heatmap"></div>
+      </section>
 
-    <div class="tabs" id="tabs">
-      <button class="tab active" data-tab="gantt">Задачи и ресурсы</button>
-      <button class="tab" data-tab="conflicts">Пересечения</button>
-      <button class="tab" data-tab="weekly">Сводка по неделям</button>
-    </div>
+      <nav class="tabs" id="tabs">
+        <button class="tab active" data-tab="gantt">Задачи и ресурсы</button>
+        <button class="tab" data-tab="conflicts">Пересечения</button>
+        <button class="tab" data-tab="weekly">Сводка</button>
+        <button class="tab" data-tab="roles">Роли × недели</button>
+      </nav>
 
-    <div class="toolbar" id="toolbar">
-      <input type="search" id="search" placeholder="Поиск по задаче, ресурсу, тикету…">
-      <select id="roleFilter"><option value="">Все роли</option></select>
-      <div class="chip-group" id="teamChips"></div>
-    </div>
+      <section class="toolbar" id="toolbar">
+        <input type="search" id="search" placeholder="Поиск по задаче, ресурсу, тикету…">
+        <select id="roleFilter"><option value="">Все роли</option></select>
+        <select id="typeFilter"><option value="">Все типы</option></select>
+        <div class="chip-group" id="teamChips"></div>
+      </section>
 
-    <div class="legend">
-      <span><i class="dot" style="background:var(--danger)"></i> Пересечение роли</span>
-      <span><i class="dot" style="background:var(--warn)"></i> 2+ команд активны</span>
-      <span>Клик по заголовку столбца — сортировка</span>
-    </div>
+      <div class="legend">
+        <span><i class="dot conflict"></i> Пересечение роли</span>
+        <span><i class="dot vacation"></i> Отпуск</span>
+        <span><i class="dot current"></i> Текущая неделя</span>
+        <span><i class="dot multi"></i> 2+ команд активны</span>
+      </div>
 
-    <div class="panel active" id="panel-gantt">
-      <div class="table-wrap"><table id="ganttTable"><thead></thead><tbody></tbody></table></div>
-    </div>
-    <div class="panel" id="panel-conflicts">
-      <div class="table-wrap"><table id="conflictsTable"><thead></thead><tbody></tbody></table></div>
-    </div>
-    <div class="panel" id="panel-weekly">
-      <div class="table-wrap"><table id="weeklyTable"><thead></thead><tbody></tbody></table></div>
-    </div>
+      <section class="panel active" id="panel-gantt">
+        <div class="table-wrap"><table id="ganttTable"><thead></thead><tbody></tbody></table></div>
+      </section>
+      <section class="panel" id="panel-conflicts">
+        <div class="table-wrap"><table id="conflictsTable"><thead></thead><tbody></tbody></table></div>
+      </section>
+      <section class="panel" id="panel-weekly">
+        <div class="table-wrap"><table id="weeklyTable"><thead></thead><tbody></tbody></table></div>
+      </section>
+      <section class="panel" id="panel-roles">
+        <div class="table-wrap"><table id="rolesTable"><thead></thead><tbody></tbody></table></div>
+      </section>
+    </main>
+
+    <footer>
+      Новые таймлайны подключаются через <code>timelines.json</code> и файл в том же формате, что <code>data.json</code>.
+      Логика пересечений считается на клиенте.
+    </footer>
   </div>
 
-  <footer>Данные: МегаИнтернет · Монетизация · ДИ · Роуминг/VAS · Групповые продукты · 3Q 2026 · занятость по цвету ячеек</footer>
-
-  <script>
-    let DATA = null;
-    let activeTeams = new Set();
-    let sortState = { col: null, asc: true };
-
-    let TEAM_KEYS = [];
-
-    async function loadData() {
-      const res = await fetch('data.json');
-      DATA = await res.json();
-      TEAM_KEYS = Object.keys(DATA.teams);
-      document.getElementById('generated').textContent = 'обновлено ' + new Date(DATA.generated).toLocaleString('ru-RU');
-      TEAM_KEYS.forEach(t => activeTeams.add(t));
-      initFilters();
-      renderStats();
-      renderAll();
-    }
-
-    function initFilters() {
-      const roles = [...new Set(DATA.entries.map(e => e.role))].sort();
-      const sel = document.getElementById('roleFilter');
-      roles.forEach(r => { const o = document.createElement('option'); o.value = r; o.textContent = r; sel.appendChild(o); });
-
-      const chips = document.getElementById('teamChips');
-      TEAM_KEYS.forEach(key => {
-        const cfg = DATA.teams[key];
-        const c = document.createElement('button');
-        c.className = 'chip on';
-        c.dataset.team = key;
-        c.textContent = cfg.full;
-        c.style.background = cfg.color;
-        c.onclick = () => {
-          if (activeTeams.has(key)) { activeTeams.delete(key); c.classList.remove('on'); c.style.background = ''; }
-          else { activeTeams.add(key); c.classList.add('on'); c.style.background = cfg.color; }
-          renderAll();
-        };
-        chips.appendChild(c);
-      });
-
-      document.getElementById('search').oninput = renderAll;
-      document.getElementById('roleFilter').onchange = renderAll;
-
-      document.querySelectorAll('.tab').forEach(btn => {
-        btn.onclick = () => {
-          document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
-          document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-          btn.classList.add('active');
-          document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
-        };
-      });
-    }
-
-    function renderStats() {
-      const el = document.getElementById('stats');
-      const active = DATA.entries.filter(e => Object.keys(e.weeks).length > 0);
-      el.innerHTML = [
-        ['Задач/ресурсов', active.length],
-        ['Пересечений', DATA.conflicts.length],
-        ['Недель', DATA.weeks.length],
-        ['Команд', TEAM_KEYS.length],
-      ].map(([l,v]) => `<div class="stat"><div class="val">${v}</div><div class="lbl">${l}</div></div>`).join('');
-    }
-
-    function filterEntries() {
-      const q = document.getElementById('search').value.toLowerCase();
-      const role = document.getElementById('roleFilter').value;
-      return DATA.entries.filter(e => {
-        if (!activeTeams.has(e.team)) return false;
-        if (role && e.role !== role) return false;
-        if (q && !(`${e.task} ${e.resource} ${e.ticket} ${e.role}`.toLowerCase().includes(q))) return false;
-        return Object.keys(e.weeks).length > 0;
-      });
-    }
-
-    function isConflictWeekRole(weekIso, role) {
-      return DATA.conflicts.some(c => c.week === weekIso && c.role === role);
-    }
-
-    function teamBadge(team) {
-      const cfg = DATA.teams[team];
-      return `<span class="team-badge" style="background:${cfg.bg};color:${cfg.color}">${cfg.full}</span>`;
-    }
-
-    function renderGantt() {
-      const entries = filterEntries();
-      const thead = document.querySelector('#ganttTable thead');
-      const tbody = document.querySelector('#ganttTable tbody');
-      const weekHeaders = DATA.weeks.map(w => `<th>${w.label}</th>`).join('');
-      thead.innerHTML = `<tr><th data-col="team">Команда</th><th data-col="task">Задача</th><th data-col="resource">Ресурс</th><th data-col="role">Роль</th><th data-col="ticket">Тикет</th>${weekHeaders}</tr>`;
-
-      if (!entries.length) {
-        tbody.innerHTML = `<tr><td colspan="${5 + DATA.weeks.length}" class="empty">Нет данных по фильтрам</td></tr>`;
-        return;
-      }
-
-      tbody.innerHTML = entries.map(e => {
-        const cfg = DATA.teams[e.team];
-        const cells = DATA.weeks.map(w => {
-          const val = e.weeks[w.iso];
-          if (!val) return '<td class="week-cell"></td>';
-          const cls = isConflictWeekRole(w.iso, e.role) ? 'week-cell filled conflict' : 'week-cell filled';
-          const bg = isConflictWeekRole(w.iso, e.role) ? '' : `background:${cfg.color};color:#fff;`;
-          return `<td class="${cls}" style="${bg}" title="${val}">${val.length > 6 ? val.slice(0,5)+'…' : val}</td>`;
-        }).join('');
-        return `<tr>
-          <td>${teamBadge(e.team)}</td>
-          <td>${esc(e.task)}</td>
-          <td>${esc(e.resource)}</td>
-          <td>${esc(e.role)}</td>
-          <td>${esc(e.ticket)}</td>${cells}</tr>`;
-      }).join('');
-
-      bindSort('#ganttTable', entries, renderGantt);
-    }
-
-    function renderConflicts() {
-      const q = document.getElementById('search').value.toLowerCase();
-      const role = document.getElementById('roleFilter').value;
-      let rows = DATA.conflicts.filter(c => {
-        if (role && c.role !== role) return false;
-        if (!c.teams.some(t => { const k = Object.entries(DATA.teams).find(([_,v]) => v.full === t)?.[0]; return k && activeTeams.has(k); })) return false;
-        if (q && !(c.role + c.teams.join() + c.tasks.join()).toLowerCase().includes(q)) return false;
-        return true;
-      });
-
-      const thead = document.querySelector('#conflictsTable thead');
-      const tbody = document.querySelector('#conflictsTable tbody');
-      thead.innerHTML = '<tr><th>Неделя</th><th>Роль</th><th>Команды</th><th>Задачи</th></tr>';
-
-      if (!rows.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="empty">Нет пересечений по фильтрам</td></tr>';
-        return;
-      }
-
-      tbody.innerHTML = rows.map(c => `<tr class="conflict-row">
-        <td>${c.weekLabel}</td>
-        <td><strong>${esc(c.role)}</strong></td>
-        <td>${c.teams.map(t => `<span class="team-badge" style="background:#ffc7ce;color:#9c0006;margin:1px">${esc(t)}</span>`).join(' ')}</td>
-        <td><div class="conflict-tasks">${c.tasks.slice(0,5).map(esc).join('<br>')}${c.tasks.length > 5 ? `<br>… +${c.tasks.length-5}` : ''}</div></td>
-      </tr>`).join('');
-    }
-
-    function renderWeekly() {
-      const thead = document.querySelector('#weeklyTable thead');
-      const tbody = document.querySelector('#weeklyTable tbody');
-      const teamHeaders = TEAM_KEYS.map(k => `<th>${DATA.teams[k].full}</th>`).join('');
-      thead.innerHTML = `<tr><th>Неделя</th><th>Всего</th>${teamHeaders}<th>Команды</th><th>Конфликты</th></tr>`;
-
-      tbody.innerHTML = DATA.weekly.map(w => {
-        const hasConflict = w.conflicts.length > 0;
-        const multiTeam = w.activeTeams.length >= 2;
-        const cls = hasConflict ? 'conflict-row' : (multiTeam ? 'multi-row' : '');
-        const conflicts = w.conflicts.map(c => `${c.role} (${c.teams.join('+')})`).join('; ');
-        const teamCells = TEAM_KEYS.map(k => {
-          const name = DATA.teams[k].full;
-          return `<td>${w.counts[name] ?? w.counts[k] ?? 0}</td>`;
-        }).join('');
-        return `<tr class="${cls}">
-          <td>${w.weekLabel}</td>
-          <td><strong>${w.total}</strong></td>
-          ${teamCells}
-          <td>${w.activeTeams.join(', ')}</td>
-          <td style="color:var(--danger)">${esc(conflicts)}</td>
-        </tr>`;
-      }).join('');
-    }
-
-    function renderAll() {
-      renderGantt();
-      renderConflicts();
-      renderWeekly();
-    }
-
-    function esc(s) {
-      if (!s) return '';
-      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    }
-
-    function bindSort(selector, data, rerender) {
-      document.querySelectorAll(`${selector} th[data-col]`).forEach(th => {
-        th.onclick = () => {
-          const col = th.dataset.col;
-          if (sortState.col === col) sortState.asc = !sortState.asc;
-          else { sortState.col = col; sortState.asc = true; }
-          data.sort((a, b) => {
-            const av = (a[col] || a.team || '').toString();
-            const bv = (b[col] || b.team || '').toString();
-            return sortState.asc ? av.localeCompare(bv, 'ru') : bv.localeCompare(av, 'ru');
-          });
-          rerender();
-        };
-      });
-    }
-
-    loadData().catch(err => {
-      document.querySelector('.container').innerHTML = `<div class="empty" style="padding:4rem">
-        <h2>Не удалось загрузить data.json</h2>
-        <p style="margin-top:1rem;color:var(--muted)">Запустите локальный сервер в папке interactive:<br><code>python3 -m http.server 8080</code></p>
-        <p style="margin-top:.5rem;color:var(--muted)">${err.message}</p>
-      </div>`;
-    });
-  </script>
+  <div class="toast" id="toast" hidden></div>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
