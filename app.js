@@ -65,8 +65,8 @@ async function loadCatalog() {
     state.catalog = catalog.timelines || [];
     return catalog.default || state.catalog[0]?.id;
   } catch {
-    state.catalog = [{ id: 'q3-2026', title: '3Q 2026', period: '', file: 'data.json' }];
-    return 'q3-2026';
+    state.catalog = [{ id: 'h2-2026', title: '3–4Q 2026', period: '', file: 'data-h2-2026.json' }];
+    return 'h2-2026';
   }
 }
 
@@ -103,6 +103,12 @@ async function loadTimeline(id) {
 
 function renderTimelineSwitch() {
   const root = document.getElementById('timelineSwitch');
+  if (state.catalog.length <= 1) {
+    root.innerHTML = '';
+    root.hidden = true;
+    return;
+  }
+  root.hidden = false;
   root.innerHTML = state.catalog.map((item) => {
     const active = item.id === state.timelineId ? 'active' : '';
     return `<button class="timeline-btn ${active}" data-id="${esc(item.id)}">${esc(item.title)}</button>`;
