@@ -32,6 +32,14 @@ ROLE_ALIASES = [
     (r"\brnd\b", "RnD"),
     (r"менеджер", "Менеджер"),
     (r"ресерч|ресёрч|research", "SA"),
+    (r"\bpo\b|product owner", "PO"),
+]
+
+
+PERSON_ROLES = [
+    (r"шлот?гауэр", "QA"),
+    (r"жогина", "PO"),
+    (r"мерзликин", "SA"),
 ]
 
 
@@ -109,6 +117,14 @@ def normalize_role(raw: str) -> str:
                 return "QA"
             return role
     return text
+
+
+def role_for_person(resource: str, task_name: str = "") -> str:
+    low = (resource or "").lower().replace("ё", "е")
+    for pattern, role in PERSON_ROLES:
+        if re.search(pattern, low, re.I):
+            return role
+    return normalize_role(task_name) or normalize_role(resource) or "Другое"
 
 
 def parse_role_and_name(label: str) -> tuple[str, str]:
@@ -235,7 +251,7 @@ def merge_entries(entries: list[dict]) -> list[dict]:
 
 
 SKIP_RESOURCES = {"менеджер", "катя (менеджер)", "менеджер "}
-KNOWN_ROLES = {"Дизайн", "SA", "BE", "FE", "QA", "Копирайт", "Контент", "Менеджер", "Отпуск", "UX", "RnD"}
+KNOWN_ROLES = {"Дизайн", "SA", "BE", "FE", "QA", "PO", "Копирайт", "Контент", "Менеджер", "Отпуск", "UX", "RnD"}
 
 
 def dgp_day_label(cell, day: date) -> str | None:
@@ -539,7 +555,7 @@ def parse_tariffs_cko() -> list[dict]:
             if res and res.getName():
                 resources.append(str(res.getName()))
         resource = resources[0] if resources else "ЦКО"
-        role = normalize_role(name) or normalize_role(resource) or "Другое"
+        role = role_for_person(resource, name)
         feature = parent_name(task)
         bucket = defaultdict(list)
         day = start_d

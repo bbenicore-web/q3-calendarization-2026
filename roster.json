@@ -64,6 +64,12 @@
       "allocations": [{ "team": "Тарифы", "fte": 1 }]
     },
     {
+      "id": "po-zhogina",
+      "name": "Жогина Екатерина",
+      "role": "PO",
+      "allocations": [{ "team": "Тарифы", "fte": 1 }]
+    },
+    {
       "id": "17002186",
       "name": "Роган Татьяна Михайловна",
       "role": "SA",
