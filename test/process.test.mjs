@@ -93,3 +93,21 @@ test('published catalog has current teams including Тарифы and no Роум
   assert.equal(names.some((name) => /роуминг|VAS/i.test(name)), false);
   assert.equal(names.some((name) => /^Ева$/i.test(name)), false);
 });
+
+test('Tariffs people keep QA / PO / SA specialties', () => {
+  const raw = JSON.parse(readFileSync(new URL('../data-h2-2026.json', import.meta.url), 'utf8'));
+  const rows = raw.entries.filter((entry) => entry.team === 'Тарифы');
+  const byPerson = (needle) => rows.filter((entry) => (entry.resource || '').toLowerCase().includes(needle));
+
+  const shlotgauer = byPerson('шлог');
+  assert.ok(shlotgauer.length > 0);
+  assert.ok(shlotgauer.every((entry) => entry.role === 'QA'));
+
+  const zhogina = byPerson('жогина');
+  assert.ok(zhogina.length > 0);
+  assert.ok(zhogina.every((entry) => entry.role === 'PO'));
+
+  const merzlikin = byPerson('мерзликин');
+  assert.ok(merzlikin.length > 0);
+  assert.ok(merzlikin.every((entry) => entry.role === 'SA'));
+});

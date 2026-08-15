@@ -51,6 +51,14 @@ class WeekOccupancyTest(unittest.TestCase):
         self.assertEqual(mod.occupancy_cell("отпуск Лера"), "отпуск")
         self.assertEqual(mod.occupancy_cell("старт РК 21.09"), "1")
 
+    def test_tariff_people_keep_actual_specialties(self):
+        self.assertEqual(mod.role_for_person("Шлогауэр", "ЦКО тестирование back"), "QA")
+        self.assertEqual(mod.role_for_person("Шлогауэр", "ЦКО тестирование front"), "QA")
+        self.assertEqual(mod.role_for_person("Шлотгауэр Иван Александрович", "ЦКО back"), "QA")
+        self.assertEqual(mod.role_for_person("Жогина Екатерина", "ЦКО ресёрч БТ"), "PO")
+        self.assertEqual(mod.role_for_person("Мерзликин", "ЦКО аналитика"), "SA")
+        self.assertEqual(mod.role_for_person("Мерзликин", "Флоу подключения расширителей для фиксы"), "SA")
+
 
 if __name__ == "__main__":
     unittest.main()
