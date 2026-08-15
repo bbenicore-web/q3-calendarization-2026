@@ -53,7 +53,7 @@
         <span><i class="dot current"></i> Текущая неделя</span>
         <span><i class="dot multi"></i> 2+ команд активны</span>
         <span>Число в клетке — дни занятости на неделе</span>
-        <span>Норма ёмкости — 22 раб. дня на человека в месяц</span>
+        <span>Ёмкость — штат × 22 раб. дня в месяц, не строки ганта</span>
       </div>
 
       <section class="panel active" id="panel-gantt">
@@ -76,6 +76,7 @@
 
     <footer>
       Новые таймлайны подключаются через <code>timelines.json</code> и файл в том же формате, что <code>data.json</code>.
+      Штат для человеко-дней — в <code>roster.json</code> (Фикса = ДИ, Репрайсы = Монетизация).
       Логика пересечений считается на клиенте.
     </footer>
   </div>

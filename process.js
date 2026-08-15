@@ -55,17 +55,42 @@ export function formatMonthLabel(monthKey) {
   return months[Number(month) - 1] || monthKey;
 }
 
-function isDemandPlaceholder(resource) {
-  return /потребность/i.test(String(resource || ''));
-}
-
 function balanceStatus(balance) {
   if (balance < 0) return 'дефицит';
   if (balance > 0) return 'профицит';
   return 'норма';
 }
 
-export function rolePersonDays(data = {}) {
+export function canonicalTeam(roster, team) {
+  const aliases = roster && roster.aliases ? roster.aliases : {};
+  return aliases[team] || team;
+}
+
+export function rosterHeadcount(roster, role, selectedTeams) {
+  const people = Array.isArray(roster && roster.people) ? roster.people : [];
+  const selected = selectedTeams
+    ? new Set([...selectedTeams].map((team) => canonicalTeam(roster, team)))
+    : null;
+  let fte = 0;
+  const names = [];
+  for (const person of people) {
+    if ((person.role || '') !== role) continue;
+    let personFte = 0;
+    for (const alloc of person.allocations || []) {
+      const team = canonicalTeam(roster, alloc.team);
+      if (!selected || selected.has(team)) personFte += Number(alloc.fte) || 0;
+    }
+    if (personFte <= 0) continue;
+    fte += Math.min(personFte, 1);
+    names.push(person.name || person.id || role);
+  }
+  return { fte, people: names.length, names };
+}
+
+export function rolePersonDays(data = {}, options = {}) {
+  const roster = options.roster || data.roster || { people: [] };
+  const teamFilter = options.teams;
+  const selectedTeams = Array.isArray(teamFilter) ? new Set(teamFilter.map((team) => canonicalTeam(roster, team))) : null;
   const weeks = normalizeWeeks(data.weeks, data.entries);
   const allowedWeeks = new Set(weeks.map((week) => week.iso));
   const entries = Array.isArray(data.entries) ? data.entries : [];
@@ -74,7 +99,7 @@ export function rolePersonDays(data = {}) {
 
   const ensure = (role) => {
     if (!byRole.has(role)) {
-      byRole.set(role, { people: new Map(), demand: new Map() });
+      byRole.set(role, { demand: new Map() });
     }
     return byRole.get(role);
   };
@@ -82,50 +107,49 @@ export function rolePersonDays(data = {}) {
   for (const entry of entries) {
     const role = entry.role || '';
     if (!role || role === 'Отпуск') continue;
+    const team = canonicalTeam(roster, entry.team);
+    if (selectedTeams && !selectedTeams.has(team)) continue;
     const bucket = ensure(role);
-    const personKey = `${entry.team || ''}\0${entry.resource || ''}`;
-    const placeholder = isDemandPlaceholder(entry.resource);
     for (const [iso, value] of Object.entries(entry.weeks || {})) {
       if (!value) continue;
       if (allowedWeeks.size && !allowedWeeks.has(iso)) continue;
       const month = weekMonthKey(iso);
       if (!month) continue;
-      const days = occupancyDays(value);
-      bucket.demand.set(month, (bucket.demand.get(month) || 0) + days);
-      if (!placeholder) {
-        if (!bucket.people.has(personKey)) bucket.people.set(personKey, new Set());
-        bucket.people.get(personKey).add(month);
-      }
+      bucket.demand.set(month, (bucket.demand.get(month) || 0) + occupancyDays(value));
     }
   }
 
-  const monthStats = (demandMap, peopleMap) => {
-    const out = {};
-    for (const month of months) {
-      const days = demandMap.get(month) || 0;
-      let people = 0;
-      for (const active of peopleMap.values()) {
-        if (active.has(month)) people += 1;
-      }
-      const capacity = people * WORK_DAYS_PER_MONTH;
-      const balance = capacity - days;
-      out[month] = { days, people, capacity, balance, status: balanceStatus(balance) };
-    }
-    return out;
-  };
-
+  const monthCount = months.length || 1;
   const rows = [...byRole.keys()].sort((a, b) => a.localeCompare(b, 'ru')).map((role) => {
     const bucket = byRole.get(role);
-    const monthMap = monthStats(bucket.demand, bucket.people);
+    const headcount = rosterHeadcount(roster, role, teamFilter);
+    const monthMap = {};
+    for (const month of months) {
+      const days = bucket.demand.get(month) || 0;
+      const capacity = headcount.fte * WORK_DAYS_PER_MONTH;
+      const balance = capacity - days;
+      monthMap[month] = {
+        days,
+        fte: headcount.fte,
+        people: headcount.people,
+        capacity,
+        balance,
+        neededFte: days / WORK_DAYS_PER_MONTH,
+        status: balanceStatus(balance),
+      };
+    }
     const days = Object.values(monthMap).reduce((sum, item) => sum + item.days, 0);
     const capacity = Object.values(monthMap).reduce((sum, item) => sum + item.capacity, 0);
     const balance = capacity - days;
     return {
       role,
-      people: bucket.people.size,
+      fte: headcount.fte,
+      people: headcount.people,
+      names: headcount.names,
       days,
       capacity,
       balance,
+      neededFte: days / WORK_DAYS_PER_MONTH / monthCount,
       status: balanceStatus(balance),
       load: capacity ? days / capacity : (days ? Infinity : 0),
       months: monthMap,

@@ -14,6 +14,9 @@ app_js = app_js.replace(
 )
 catalog = json.loads((root / "timelines.json").read_text(encoding="utf-8"))
 embedded = {"timelines.json": catalog}
+roster_path = root / "roster.json"
+if roster_path.exists():
+    embedded["roster.json"] = json.loads(roster_path.read_text(encoding="utf-8"))
 for item in catalog.get("timelines", []):
     path = item.get("file")
     if path:
