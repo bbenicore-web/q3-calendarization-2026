@@ -24,6 +24,141 @@ export function isVacation(value) {
   return String(value || '').toLowerCase().includes('отпуск');
 }
 
+export function weekCellLabel(value) {
+  const text = String(value ?? '').trim();
+  if (!text) return '';
+  if (isVacation(text)) return 'отпуск';
+  const match = text.match(/^(\d+)/);
+  if (match) return match[1];
+  return text;
+}
+
+export const WORK_DAYS_PER_MONTH = 22;
+
+export function occupancyDays(value) {
+  if (!value) return 0;
+  if (isVacation(value)) return 0;
+  const parsed = Number(weekCellLabel(value));
+  return Number.isFinite(parsed) ? parsed : 1;
+}
+
+export function weekMonthKey(isoMonday) {
+  if (!isoMonday || !/^\d{4}-\d{2}-\d{2}$/.test(isoMonday)) return '';
+  const date = new Date(`${isoMonday}T12:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + 2);
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
+}
+
+export function formatMonthLabel(monthKey) {
+  const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+  const [, month] = String(monthKey).split('-');
+  return months[Number(month) - 1] || monthKey;
+}
+
+function balanceStatus(balance) {
+  if (balance < 0) return 'дефицит';
+  if (balance > 0) return 'профицит';
+  return 'норма';
+}
+
+export function canonicalTeam(roster, team) {
+  const aliases = roster && roster.aliases ? roster.aliases : {};
+  return aliases[team] || team;
+}
+
+export function rosterHeadcount(roster, role, selectedTeams) {
+  const people = Array.isArray(roster && roster.people) ? roster.people : [];
+  const selected = selectedTeams
+    ? new Set([...selectedTeams].map((team) => canonicalTeam(roster, team)))
+    : null;
+  let fte = 0;
+  const names = [];
+  for (const person of people) {
+    if ((person.role || '') !== role) continue;
+    let personFte = 0;
+    for (const alloc of person.allocations || []) {
+      const team = canonicalTeam(roster, alloc.team);
+      if (!selected || selected.has(team)) personFte += Number(alloc.fte) || 0;
+    }
+    if (personFte <= 0) continue;
+    fte += Math.min(personFte, 1);
+    names.push(person.name || person.id || role);
+  }
+  return { fte, people: names.length, names };
+}
+
+export function rolePersonDays(data = {}, options = {}) {
+  const roster = options.roster || data.roster || { people: [] };
+  const teamFilter = options.teams;
+  const selectedTeams = Array.isArray(teamFilter) ? new Set(teamFilter.map((team) => canonicalTeam(roster, team))) : null;
+  const weeks = normalizeWeeks(data.weeks, data.entries);
+  const allowedWeeks = new Set(weeks.map((week) => week.iso));
+  const entries = Array.isArray(data.entries) ? data.entries : [];
+  const months = [...new Set(weeks.map((week) => weekMonthKey(week.iso)).filter(Boolean))].sort();
+  const byRole = new Map();
+
+  const ensure = (role) => {
+    if (!byRole.has(role)) {
+      byRole.set(role, { demand: new Map() });
+    }
+    return byRole.get(role);
+  };
+
+  for (const entry of entries) {
+    const role = entry.role || '';
+    if (!role || role === 'Отпуск') continue;
+    const team = canonicalTeam(roster, entry.team);
+    if (selectedTeams && !selectedTeams.has(team)) continue;
+    const bucket = ensure(role);
+    for (const [iso, value] of Object.entries(entry.weeks || {})) {
+      if (!value) continue;
+      if (allowedWeeks.size && !allowedWeeks.has(iso)) continue;
+      const month = weekMonthKey(iso);
+      if (!month) continue;
+      bucket.demand.set(month, (bucket.demand.get(month) || 0) + occupancyDays(value));
+    }
+  }
+
+  const monthCount = months.length || 1;
+  const rows = [...byRole.keys()].sort((a, b) => a.localeCompare(b, 'ru')).map((role) => {
+    const bucket = byRole.get(role);
+    const headcount = rosterHeadcount(roster, role, teamFilter);
+    const monthMap = {};
+    for (const month of months) {
+      const days = bucket.demand.get(month) || 0;
+      const capacity = headcount.fte * WORK_DAYS_PER_MONTH;
+      const balance = capacity - days;
+      monthMap[month] = {
+        days,
+        fte: headcount.fte,
+        people: headcount.people,
+        capacity,
+        balance,
+        neededFte: days / WORK_DAYS_PER_MONTH,
+        status: balanceStatus(balance),
+      };
+    }
+    const days = Object.values(monthMap).reduce((sum, item) => sum + item.days, 0);
+    const capacity = Object.values(monthMap).reduce((sum, item) => sum + item.capacity, 0);
+    const balance = capacity - days;
+    return {
+      role,
+      fte: headcount.fte,
+      people: headcount.people,
+      names: headcount.names,
+      days,
+      capacity,
+      balance,
+      neededFte: days / WORK_DAYS_PER_MONTH / monthCount,
+      status: balanceStatus(balance),
+      load: capacity ? days / capacity : (days ? Infinity : 0),
+      months: monthMap,
+    };
+  });
+
+  return { months, rows, workDaysPerMonth: WORK_DAYS_PER_MONTH };
+}
+
 export function conflictTaskLabel(teams, entry) {
   const full = teamFull(teams, entry.team);
   return `[${full}] ${truncateTask(entry.task || '')} / ${entry.resource || ''}`;

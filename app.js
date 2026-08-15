@@ -1,9 +1,10 @@
-import { processTimeline, isVacation, roleMatrix, teamFull } from './process.js';
+import { processTimeline, isVacation, roleMatrix, teamFull, weekCellLabel, rolePersonDays, formatMonthLabel, WORK_DAYS_PER_MONTH } from './process.js';
 
 const state = {
   catalog: [],
   timelineId: null,
   data: null,
+  roster: { people: [] },
   teamKeys: [],
   activeTeams: new Set(),
   role: '',
@@ -66,6 +67,14 @@ async function loadCatalog() {
   } catch {
     state.catalog = [{ id: 'q3-2026', title: '3Q 2026', period: '', file: 'data.json' }];
     return 'q3-2026';
+  }
+}
+
+async function loadRoster() {
+  try {
+    state.roster = await fetchJson('roster.json');
+  } catch {
+    state.roster = { people: [] };
   }
 }
 
@@ -195,6 +204,44 @@ function isConflictWeekRole(weekIso, role) {
   return state.data.conflicts.some((conflict) => conflict.week === weekIso && conflict.role === role);
 }
 
+function visibleCapacity() {
+  const weeks = state.week ? state.data.weeks.filter((week) => week.iso === state.week) : state.data.weeks;
+  const entries = state.data.entries.filter((entry) => {
+    if (state.role && entry.role !== state.role) return false;
+    if (state.type && entry.type !== state.type) return false;
+    if (state.query) {
+      const hay = `${entry.task} ${entry.resource} ${entry.ticket} ${entry.role} ${entry.type}`.toLowerCase();
+      if (!hay.includes(state.query)) return false;
+    }
+    return Object.keys(entry.weeks || {}).length > 0;
+  });
+  return rolePersonDays(
+    { weeks, entries, roster: state.roster },
+    { teams: [...state.activeTeams] }
+  );
+}
+
+function signedDays(value) {
+  if (value > 0) return `+${formatNumber(value)}`;
+  if (value < 0) return formatNumber(value);
+  return '0';
+}
+
+function formatNumber(value) {
+  if (!Number.isFinite(value)) return '∞';
+  const rounded = Math.round(value * 100) / 100;
+  return String(rounded);
+}
+
+function formatFte(value) {
+  return formatNumber(value);
+}
+
+function formatLoad(load) {
+  if (!Number.isFinite(load)) return '∞';
+  return `${Math.round(load * 100)}%`;
+}
+
 function renderStats() {
   const active = state.data.entries.filter((entry) => Object.keys(entry.weeks || {}).length > 0);
   const visible = filterEntries();
@@ -203,6 +250,7 @@ function renderStats() {
     ['Пересечений', state.data.conflicts.length, 'роль × неделя'],
     ['Недель', state.data.weeks.length, state.data.weeks[0]?.label + ' — ' + state.data.weeks.at(-1)?.label],
     ['Команд', state.teamKeys.length, 'в выбранном таймлайне'],
+    ['Ролей в дефиците', visibleCapacity().rows.filter((row) => row.balance < 0).length, `штат × ${WORK_DAYS_PER_MONTH} дн./мес.`],
   ].map(([label, value, hint]) => `
     <article class="stat">
       <div class="val">${esc(value)}</div>
@@ -277,6 +325,7 @@ function renderGantt() {
       const value = entry.weeks[week.iso];
       const currentCls = week.iso === current ? 'current-week' : '';
       if (!value) return `<td class="week-cell ${currentCls}"></td>`;
+      const shown = weekCellLabel(value);
       const vacation = isVacation(value);
       const conflict = isConflictWeekRole(week.iso, entry.role);
       const cls = [
@@ -287,8 +336,8 @@ function renderGantt() {
         currentCls,
       ].filter(Boolean).join(' ');
       const bg = vacation || conflict ? '' : `background:${cfg.color};color:#fff;`;
-      const shown = value.length > 8 ? `${value.slice(0, 7)}…` : value;
-      return `<td class="${cls}" style="${bg}" title="${esc(value)}">${esc(shown)}</td>`;
+      const title = vacation ? 'отпуск' : `${shown} дн.`;
+      return `<td class="${cls}" style="${bg}" title="${esc(title)}">${esc(shown)}</td>`;
     }).join('');
     return `<tr>
       <td class="sticky-col col-team">${teamBadge(entry.team)}</td>
@@ -377,6 +426,49 @@ function renderRoles() {
   }).join('');
 }
 
+function renderCapacity() {
+  const data = visibleCapacity();
+  const note = document.getElementById('capacityNote');
+  note.textContent = `Ёмкость = штат × ${WORK_DAYS_PER_MONTH} раб. дня в месяц. Баланс = ёмкость − человеко-дни из плана. Фикса = Домашний интернет, Репрайсы = Монетизация. Совмещённые (Судариков, Фёдорова) считаются один раз. Монетизация без дизайнера: спрос идёт в дефицит. Контент в штате нет.`;
+  const thead = document.querySelector('#capacityTable thead');
+  const tbody = document.querySelector('#capacityTable tbody');
+  const monthHeaders = data.months.map((month) => `<th>${esc(formatMonthLabel(month))}</th>`).join('');
+  thead.innerHTML = `<tr>
+    <th>Специальность</th>
+    <th>FTE есть</th>
+    <th>FTE нужно</th>
+    <th>Чел.-дни</th>
+    <th>Ёмкость</th>
+    <th>Баланс</th>
+    <th>Загрузка</th>
+    ${monthHeaders}
+  </tr>`;
+  if (!data.rows.length) {
+    tbody.innerHTML = `<tr><td colspan="${7 + data.months.length}" class="empty">Нет данных по фильтрам</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = data.rows.map((row) => {
+    const monthCells = data.months.map((month) => {
+      const cell = row.months[month];
+      const cls = cell.balance < 0 ? 'deficit' : (cell.days ? 'surplus' : '');
+      const title = `${cell.days} чел.-дн. · ${formatFte(cell.fte)} FTE · ёмкость ${formatNumber(cell.capacity)} · нужно ${formatFte(cell.neededFte)} · ${signedDays(cell.balance)}`;
+      return `<td class="${cls}" title="${esc(title)}">${cell.days ? `${formatNumber(cell.days)} / ${signedDays(cell.balance)}` : '—'}</td>`;
+    }).join('');
+    const rowCls = row.balance < 0 ? 'deficit-row' : '';
+    const names = (row.names || []).join(', ') || 'нет в штате';
+    return `<tr class="${rowCls}">
+      <td><strong title="${esc(names)}">${esc(row.role)}</strong></td>
+      <td title="${esc(names)}">${esc(formatFte(row.fte))}</td>
+      <td>${esc(formatFte(row.neededFte))}</td>
+      <td>${esc(formatNumber(row.days))}</td>
+      <td>${esc(formatNumber(row.capacity))}</td>
+      <td class="${row.balance < 0 ? 'deficit' : 'surplus'}"><strong>${esc(signedDays(row.balance))}</strong> ${esc(row.status)}</td>
+      <td>${esc(formatLoad(row.load))}</td>
+      ${monthCells}
+    </tr>`;
+  }).join('');
+}
+
 function renderAll() {
   renderTimelineSwitch();
   renderStats();
@@ -385,6 +477,7 @@ function renderAll() {
   renderConflicts();
   renderWeekly();
   renderRoles();
+  renderCapacity();
 }
 
 function bindTabs() {
@@ -402,6 +495,7 @@ function bindTabs() {
 async function boot() {
   try {
     const defaultId = await loadCatalog();
+    await loadRoster();
     const requested = new URLSearchParams(window.location.search).get('timeline');
     await loadTimeline(requested || defaultId);
     bindTabs();

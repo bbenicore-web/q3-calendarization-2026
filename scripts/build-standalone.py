@@ -9,11 +9,14 @@ styles = (root / "styles.css").read_text(encoding="utf-8")
 process_js = (root / "process.js").read_text(encoding="utf-8")
 app_js = (root / "app.js").read_text(encoding="utf-8")
 app_js = app_js.replace(
-    "import { processTimeline, isVacation, roleMatrix, teamFull } from './process.js';\n",
+    "import { processTimeline, isVacation, roleMatrix, teamFull, weekCellLabel, rolePersonDays, formatMonthLabel, WORK_DAYS_PER_MONTH } from './process.js';\n",
     "",
 )
 catalog = json.loads((root / "timelines.json").read_text(encoding="utf-8"))
 embedded = {"timelines.json": catalog}
+roster_path = root / "roster.json"
+if roster_path.exists():
+    embedded["roster.json"] = json.loads(roster_path.read_text(encoding="utf-8"))
 for item in catalog.get("timelines", []):
     path = item.get("file")
     if path:
