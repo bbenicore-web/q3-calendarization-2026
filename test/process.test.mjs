@@ -61,3 +61,19 @@ test('processTimeline infers weeks and team colors from entries', () => {
   assert.equal(processed.weekly[0].total, 2);
   assert.equal(processed.weekly[1].total, 1);
 });
+
+test('h2-2026 timeline processes with expected teams and week span', () => {
+  const raw = JSON.parse(readFileSync(new URL('../data-h2-2026.json', import.meta.url), 'utf8'));
+  const processed = processTimeline(raw);
+  assert.deepEqual(Object.keys(processed.teams), ['Монетизация', 'ДИ', 'ДГП', 'МегаИнтернет', 'Тарифы']);
+  assert.equal(processed.weeks[0].iso, '2026-06-29');
+  assert.ok(processed.weeks.at(-1).iso >= '2026-12-01');
+  assert.ok(processed.weeks.at(-1).iso <= '2026-12-28');
+  assert.ok(processed.entries.every((entry) => Object.keys(entry.weeks).every((iso) => iso <= '2026-12-28')));
+  assert.ok(processed.entries.length > 100);
+  assert.ok(processed.conflicts.length > 0);
+  const roles = new Set(processed.entries.map((entry) => entry.role));
+  for (const role of ['Дизайн', 'SA', 'BE', 'FE', 'QA']) {
+    assert.ok(roles.has(role), `missing role ${role}`);
+  }
+});

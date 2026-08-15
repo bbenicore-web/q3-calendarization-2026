@@ -2,7 +2,7 @@
 
 Интерактивный дашборд загрузки команд, ролей и пересечений по неделям.
 
-Сейчас в каталоге один таймлайн — **3Q 2026**. Новые таймлайны подключаются без изменения логики: достаточно файла данных и записи в `timelines.json`.
+Сейчас в каталоге два таймлайна: **3–4Q 2026** (новые планы команд, по умолчанию) и снимок **3Q 2026** от июля. Новые таймлайны подключаются без изменения логики: достаточно файла данных и записи в `timelines.json`.
 
 ## GitHub Pages
 
@@ -33,8 +33,10 @@ node --test test/process.test.mjs
 - `index.html` / `styles.css` / `app.js` — интерфейс
 - `process.js` — расчёт пересечений и недельной сводки
 - `timelines.json` — каталог таймлайнов
-- `data.json` — таймлайн 3Q 2026
+- `data-h2-2026.json` — актуальная календаризация 3–4Q 2026
+- `data.json` — снимок 3Q 2026 (июль)
 - `index-standalone.html` — всё в одном файле
+- `scripts/build_calendar.py` — сборка `data-h2-2026.json` из файлов в `incoming/`
 - `test/process.test.mjs` — сверка расчётов с эталоном 3Q 2026
 
 ## Как добавить новый таймлайн
@@ -52,6 +54,15 @@ node --test test/process.test.mjs
 ```
 
 3. Пересоберите standalone при необходимости: `python3 scripts/build-standalone.py`
+
+Чтобы пересобрать актуальную календаризацию из исходников в `incoming/`:
+
+```bash
+python3 scripts/build_calendar.py
+python3 scripts/build-standalone.py
+```
+
+Нужны `openpyxl` (Excel) и `jpype1` + `mpxj` (MS Project `.mpp` команды Тарифы).
 
 Минимальный формат файла данных:
 
