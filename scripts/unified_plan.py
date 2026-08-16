@@ -47,7 +47,7 @@ TEAM_ALIASES = {
     "цко": "Тарифы",
 }
 
-ROLES = ["Дизайн", "SA", "PO", "BE", "FE", "QA", "Контент", "Отпуск"]
+ROLES = ["Дизайн", "SA", "PO", "BE", "FE", "QA", "Контент"]
 ROLE_ALIASES = {
     "дизайн": "Дизайн",
     "дизайнер": "Дизайн",
@@ -70,9 +70,8 @@ ROLE_ALIASES = {
     "test": "QA",
     "контент": "Контент",
     "копирайт": "Контент",
-    "отпуск": "Отпуск",
 }
-TYPES = ["деливери", "дискавери", "ЦКО"]
+TYPES = ["деливери", "дискавери"]
 NEED_RESOURCES = [
     "Потребность дизайн",
     "Потребность SA",
@@ -138,12 +137,14 @@ META_HEADERS = [
     "Тип",
     "Исполнитель",
     "Роль",
+    "Отпуск",
     "Начало",
     "Окончание",
     "Чел-дни",
     "Примечание",
 ]
-PLAN_HEADERS = list(META_HEADERS)  # week labels appended at runtime
+PLAN_HEADERS = list(META_HEADERS)
+VACATION_YES = {"да", "yes", "true", "1", "x", "+", "отпуск", "✓"}
 
 HEADER_FILL = PatternFill("solid", fgColor="1C2531")
 HEADER_FONT = Font(color="FFFFFF", bold=True, name="Calibri", size=11)
@@ -189,9 +190,37 @@ def canonical_role(raw: str) -> str:
     text = re.sub(r"\s+", " ", (raw or "").strip())
     if not text:
         return ""
+    low = text.lower().replace("ё", "е")
+    if low == "отпуск":
+        return ""
     if text in ROLES:
         return text
-    return ROLE_ALIASES.get(text.lower().replace("ё", "е"), text)
+    return ROLE_ALIASES.get(low, text)
+
+
+def canonical_type(raw: str) -> str:
+    text = re.sub(r"\s+", " ", (raw or "").strip())
+    if not text:
+        return ""
+    low = text.lower().replace("ё", "е")
+    if low in {"цко", "cko"}:
+        return ""
+    if text in TYPES:
+        return text
+    if low in {"деливери", "delivery"}:
+        return "деливери"
+    if low in {"дискавери", "discovery"}:
+        return "дискавери"
+    return ""
+
+
+def parse_vacation_flag(value) -> bool:
+    if value is True:
+        return True
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return int(value) == 1
+    text = str(value or "").strip().lower().replace("ё", "е")
+    return text in VACATION_YES
 
 
 def short_official_name(name: str) -> str:
@@ -368,6 +397,37 @@ def first_last_dates(weeks: dict) -> tuple[date | None, date | None]:
     return start, end
 
 
+def entries_for_template(entries: list[dict]) -> list[dict]:
+    out = []
+    for entry in entries or []:
+        role_raw = str(entry.get("role") or "").strip()
+        role_is_vacation = role_raw.lower().replace("ё", "е") == "отпуск"
+        role = role_for_resource(entry.get("resource") or "") if role_is_vacation else canonical_role(role_raw)
+        typ = canonical_type(entry.get("type") or "")
+        weeks = entry.get("weeks") or {}
+        work = {
+            week: occupancy_cell(value)
+            for week, value in weeks.items()
+            if occupancy_cell(value) and occupancy_cell(value) != "отпуск"
+        }
+        vac = {week: "отпуск" for week, value in weeks.items() if occupancy_cell(value) == "отпуск"}
+        if role_is_vacation:
+            vac = {week: "отпуск" for week, value in weeks.items() if occupancy_cell(value)}
+            work = {}
+        base = {
+            **entry,
+            "role": role,
+            "type": typ,
+        }
+        if work:
+            out.append({**base, "weeks": work, "vacation": False})
+        if vac:
+            out.append({**base, "weeks": vac, "vacation": True, "role": role or role_for_resource(entry.get("resource") or "")})
+        if not work and not vac and entry.get("vacation"):
+            out.append({**base, "vacation": True})
+    return out
+
+
 def write_workbook(path: Path, entries: list[dict] | None = None, include_examples: bool = True) -> Path:
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -396,7 +456,7 @@ def write_workbook(path: Path, entries: list[dict] | None = None, include_exampl
     rows_out = []
     if include_examples:
         rows_out.extend(_example_rows(weeks))
-    for entry in entries or []:
+    for entry in entries_for_template(entries or []):
         rows_out.append(_entry_to_row(entry, weeks))
 
     empty_target = max(120, len(rows_out) + 40)
@@ -410,9 +470,9 @@ def write_workbook(path: Path, entries: list[dict] | None = None, include_exampl
         for cell in row:
             cell.border = THIN
             cell.font = Font(name="Calibri", size=11)
-            if cell.column in (7, 8):
+            if cell.column in (8, 9):
                 cell.number_format = "DD.MM.YYYY"
-            if cell.column >= 11:
+            if cell.column >= 12:
                 cell.alignment = Alignment(horizontal="center")
         task = str(ws.cell(row[0].row, 2).value or "")
         if task.upper().startswith("ПРИМЕР"):
@@ -429,10 +489,11 @@ def write_workbook(path: Path, entries: list[dict] | None = None, include_exampl
         4: 14,
         5: 24,
         6: 12,
-        7: 13,
+        7: 10,
         8: 13,
-        9: 10,
-        10: 18,
+        9: 13,
+        10: 10,
+        11: 18,
     }
     for col in range(1, len(headers) + 1):
         ws.column_dimensions[get_column_letter(col)].width = widths.get(col, 7)
@@ -443,11 +504,12 @@ def write_workbook(path: Path, entries: list[dict] | None = None, include_exampl
     roles_end = 1 + len(ROLES)
 
     dv_team = DataValidation(type="list", formula1="=Справочник!$A$2:$A$6", allow_blank=True)
-    dv_type = DataValidation(type="list", formula1="=Справочник!$C$2:$C$4", allow_blank=True)
+    dv_type = DataValidation(type="list", formula1="=Справочник!$C$2:$C$3", allow_blank=True)
     dv_person = DataValidation(type="list", formula1=f"=Справочник!$E$2:$E${people_end}", allow_blank=True)
     dv_role = DataValidation(type="list", formula1=f"=Справочник!$G$2:$G${roles_end}", allow_blank=True)
-    dv_week = DataValidation(type="list", formula1='"1,2,3,4,5,отпуск"', allow_blank=True)
-    for dv in (dv_team, dv_type, dv_person, dv_role, dv_week):
+    dv_vacation = DataValidation(type="list", formula1='"да"', allow_blank=True)
+    dv_week = DataValidation(type="list", formula1='"1,2,3,4,5"', allow_blank=True)
+    for dv in (dv_team, dv_type, dv_person, dv_role, dv_vacation, dv_week):
         dv.showErrorMessage = True
         dv.errorTitle = "Неверное значение"
         dv.error = "Выберите значение из списка — так не будет разночтений."
@@ -456,7 +518,8 @@ def write_workbook(path: Path, entries: list[dict] | None = None, include_exampl
     dv_type.add(f"D2:D{last_row}")
     dv_person.add(f"E2:E{last_row}")
     dv_role.add(f"F2:F{last_row}")
-    dv_week.add(f"K2:{last_col}{last_row}")
+    dv_vacation.add(f"G2:G{last_row}")
+    dv_week.add(f"L2:{last_col}{last_row}")
 
     for team in TEAMS:
         fill = PatternFill("solid", fgColor=team["bg"])
@@ -466,7 +529,7 @@ def write_workbook(path: Path, entries: list[dict] | None = None, include_exampl
             FormulaRule(formula=[f'$A2="{team["full"]}"'], fill=fill, font=font),
         )
 
-    for col, week in enumerate(weeks, 11):
+    for col, week in enumerate(weeks, 12):
         ws.cell(1, col).comment = None
         ws.cell(1, col).value = week_label(week)
 
@@ -488,7 +551,7 @@ def _write_instructions(ws):
     lines = [
         "",
         "Зачем этот файл",
-        "Все команды заполняют один и тот же Excel. Цвета ячеек больше не означают занятость. Занятость — это даты, числа дней и слово «отпуск».",
+        "Все команды заполняют один и тот же Excel. Цвета ячеек больше не означают занятость. Занятость — это даты и числа дней. Отпуск отмечается отдельно.",
         "",
         "Что заполнять",
         "Только лист «План». Строки «ПРИМЕР: …» жёлтые — удалите их перед отправкой, в таймплан они не попадут.",
@@ -497,12 +560,13 @@ def _write_instructions(ws):
         "Команда — только из списка: Монетизация, Домашний интернет, ДГП, МегаИнтернет, Тарифы. Фикса = Домашний интернет, Репрайсы = Монетизация.",
         "Задача — одно название на одну строку исполнителя. Несколько людей на задачу = несколько строк.",
         "Тикет — B2CPROD-… / CKO-…, если есть.",
-        "Тип — деливери / дискавери / ЦКО, либо пусто.",
+        "Тип — только деливери или дискавери, либо пусто. ЦКО не пишите.",
         "Исполнитель — только из списка. Не пишите FE, бэк, DUX, Касенко, Шлогауэр.",
-        "Роль — Дизайн / SA / PO / BE / FE / QA / Контент / Отпуск. Если не указать, подставится роль из штата.",
+        "Роль — Дизайн / SA / PO / BE / FE / QA / Контент. Если не указать, подставится роль из штата. Отпуск ролью не является.",
+        "Отпуск — поставьте «да», если эта строка про нерабочие дни человека. Роль оставьте настоящей (QA, SA, …). Даты начала и окончания — период отпуска.",
         "Начало и Окончание — рабочие даты включительно. Выходные игнорируются.",
-        "Чел-дни — необязательно. Если пусто, считаются все будни между началом и окончанием. Если указано 3 при пяти днях в диапазоне, в план попадут первые 3 будня.",
-        "Недели справа — точный вариант, как в таймплане: 1–5 или отпуск. Если заполнены недели, они важнее дат.",
+        "Чел-дни — необязательно и только для работы, не для отпуска. Если пусто, считаются все будни между началом и окончанием. Если указано 3 при пяти днях в диапазоне, в план попадут первые 3 будня.",
+        "Недели справа — занятость работой: 1–5. Если заполнены, они важнее дат. В отпускные недели ничего не ставьте: отпуск уже отмечен колонкой «Отпуск».",
         "",
         "Чего нельзя делать",
         "Не закрашивайте недели цветом вместо числа. Цвет команды в колонке «Команда» ставится сам и в расчёт не идёт.",
@@ -511,7 +575,7 @@ def _write_instructions(ws):
         "Потребность без человека — выберите «Потребность SA/FE/BE/QA/дизайн/контент». Это спрос без FTE.",
         "",
         "Отпуска",
-        "Роль = Отпуск, либо в неделе напишите «отпуск». Исполнителя укажите из списка.",
+        "Отдельная строка на человека: роль из списка, в колонке «Отпуск» — да, даты периода. Эти дни у человека не рабочие и в спрос не идут.",
         "",
         "Как отдать файл",
         "Сохраните как .xlsx и пришлите целиком. Можно один общий файл на все команды или по файлу на команду — структура листа «План» должна совпадать.",
@@ -537,7 +601,8 @@ def _write_reference(ws, people):
     ws["F1"] = "Роль штата"
     ws["G1"] = "Роль"
     ws["H1"] = "Команды исполнителя"
-    for cell in ("A1", "C1", "E1", "F1", "G1", "H1"):
+    ws["I1"] = "Отпуск"
+    for cell in ("A1", "C1", "E1", "F1", "G1", "H1", "I1"):
         ws[cell].font = HEADER_FONT
         ws[cell].fill = HEADER_FILL
     for idx, team in enumerate(TEAMS, 2):
@@ -548,6 +613,7 @@ def _write_reference(ws, people):
         ws.cell(idx, 3, typ)
     for idx, role in enumerate(ROLES, 2):
         ws.cell(idx, 7, role)
+    ws.cell(2, 9, "да")
     for idx, (name, role, teams) in enumerate(people, 2):
         ws.cell(idx, 5, name)
         ws.cell(idx, 6, role)
@@ -558,6 +624,7 @@ def _write_reference(ws, people):
     ws.column_dimensions["F"].width = 14
     ws.column_dimensions["G"].width = 14
     ws.column_dimensions["H"].width = 28
+    ws.column_dimensions["I"].width = 12
     note_row = max(22, len(people) + 4)
     note = ws.cell(note_row, 1, "Цвета команд совпадают с дашбордом. Они справочные: занятость цветом не кодируется.")
     note.alignment = Alignment(wrap_text=True)
@@ -594,30 +661,47 @@ def _example_rows(weeks: list[date]) -> list[list]:
             "type": "",
             "weeks": {"2026-08-03": "2", "2026-08-10": "5"},
         },
+        {
+            "team": "Монетизация",
+            "task": "ПРИМЕР: отпуск",
+            "resource": "Роган Татьяна",
+            "role": "SA",
+            "ticket": "",
+            "type": "",
+            "vacation": True,
+            "weeks": {"2026-09-07": "отпуск"},
+        },
     ]
     return [_entry_to_row(item, weeks, week_index) for item in examples]
 
 
 def _entry_to_row(entry: dict, weeks: list[date], week_index: dict | None = None) -> list:
     week_index = week_index or {iso(week): idx for idx, week in enumerate(weeks)}
-    start, end = first_last_dates(entry.get("weeks") or {})
+    vacation = bool(entry.get("vacation"))
+    occupancy = entry.get("weeks") or {}
+    if vacation:
+        occupancy = {week: "отпуск" for week in occupancy}
+    start, end = first_last_dates(occupancy)
     row = [""] * (len(META_HEADERS) + len(weeks))
     row[0] = display_team(canonical_team(entry.get("team") or ""))
     row[1] = entry.get("task") or ""
     row[2] = entry.get("ticket") or ""
-    row[3] = entry.get("type") or ""
+    row[3] = canonical_type(entry.get("type") or "")
     row[4] = canonical_resource(entry.get("resource") or "")
-    row[5] = canonical_role(entry.get("role") or "")
-    row[6] = start
-    row[7] = end
-    row[8] = person_days_of(entry.get("weeks") or {}) or None
-    row[9] = ""
-    for week_iso, value in (entry.get("weeks") or {}).items():
-        idx = week_index.get(week_iso)
-        if idx is None:
-            continue
-        cell = occupancy_cell(value)
-        row[len(META_HEADERS) + idx] = int(cell) if cell.isdigit() else cell
+    row[5] = canonical_role(entry.get("role") or "") or role_for_resource(entry.get("resource") or "")
+    row[6] = "да" if vacation else ""
+    row[7] = start
+    row[8] = end
+    row[9] = None if vacation else (person_days_of(occupancy) or None)
+    row[10] = ""
+    if not vacation:
+        for week_iso, value in occupancy.items():
+            idx = week_index.get(week_iso)
+            if idx is None:
+                continue
+            cell = occupancy_cell(value)
+            if cell.isdigit():
+                row[len(META_HEADERS) + idx] = int(cell)
     return row
 
 
@@ -627,6 +711,7 @@ def parse_workbook(path: Path) -> list[dict]:
         raise ValueError(f"{path}: нет листа «План»")
     ws = wb["План"]
     header = [str(cell.value or "").strip() for cell in next(ws.iter_rows(min_row=1, max_row=1))]
+    col = {name: idx for idx, name in enumerate(header)}
     week_cols = {}
     for idx, title in enumerate(header):
         if re.fullmatch(r"\d{2}\.\d{2}", title):
@@ -635,28 +720,38 @@ def parse_workbook(path: Path) -> list[dict]:
         elif re.fullmatch(r"\d{4}-\d{2}-\d{2}", title):
             week_cols[idx] = iso(monday_of(date.fromisoformat(title)))
 
+    def take(values, name, default=""):
+        idx = col.get(name)
+        if idx is None or idx >= len(values):
+            return default
+        return values[idx]
+
     entries = []
     for row in ws.iter_rows(min_row=2, values_only=True):
-        values = list(row) + [None] * (len(header) - len(row))
-        team = canonical_team(values[0] if values else "")
-        task = re.sub(r"\s+", " ", str(values[1] or "").strip())
+        values = list(row) + [None] * max(0, len(header) - len(row))
+        team = canonical_team(take(values, "Команда"))
+        task = re.sub(r"\s+", " ", str(take(values, "Задача") or "").strip())
         if not team or not task:
             continue
         if task.upper().startswith("ПРИМЕР"):
             continue
-        ticket = str(values[2] or "").strip()
-        typ = str(values[3] or "").strip()
-        resource = canonical_resource(str(values[4] or "").strip())
-        role = canonical_role(str(values[5] or "").strip())
-        start = parse_date_value(values[6])
-        end = parse_date_value(values[7])
-        person_days_raw = values[8]
+        ticket = str(take(values, "Тикет") or "").strip()
+        typ = canonical_type(take(values, "Тип"))
+        resource = canonical_resource(str(take(values, "Исполнитель") or "").strip())
+        role_raw = str(take(values, "Роль") or "").strip()
+        role = canonical_role(role_raw)
+        vacation = parse_vacation_flag(take(values, "Отпуск")) or role_raw.lower().replace("ё", "е") == "отпуск"
+        start = parse_date_value(take(values, "Начало", None))
+        end = parse_date_value(take(values, "Окончание", None))
+        person_days_raw = take(values, "Чел-дни", None)
         person_days = None
         if isinstance(person_days_raw, (int, float)) and not isinstance(person_days_raw, bool):
             person_days = int(person_days_raw)
         elif str(person_days_raw or "").strip().isdigit():
             person_days = int(str(person_days_raw).strip())
-        note = str(values[9] or "").strip() if len(values) > 9 else ""
+        note = str(take(values, "Примечание") or "").strip()
+        if "отпуск" in note.lower():
+            vacation = True
 
         week_map = {}
         for col_idx, week_iso in week_cols.items():
@@ -666,15 +761,18 @@ def parse_workbook(path: Path) -> list[dict]:
             if cell:
                 week_map[week_iso] = cell
 
-        vacation = role == "Отпуск" or "отпуск" in note.lower()
+        if vacation and week_map:
+            week_map = {week: "отпуск" for week in week_map}
         if not week_map:
             if not start or not end:
                 continue
-            week_map = weeks_from_range(start, end, person_days=person_days, vacation=vacation)
+            week_map = weeks_from_range(start, end, person_days=None if vacation else person_days, vacation=vacation)
+        elif vacation:
+            week_map = {week: "отпуск" for week in week_map}
         if not week_map:
             continue
         if not role:
-            role = role_for_resource(resource, "Отпуск" if vacation else "")
+            role = role_for_resource(resource)
         if not resource:
             resource = role or "—"
         entries.append(
@@ -685,6 +783,7 @@ def parse_workbook(path: Path) -> list[dict]:
                 "role": role or "Другое",
                 "ticket": ticket,
                 "type": typ,
+                "vacation": vacation,
                 "weeks": week_map,
             }
         )

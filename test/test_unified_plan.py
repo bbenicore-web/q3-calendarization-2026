@@ -26,6 +26,15 @@ class UnifiedPlanTest(unittest.TestCase):
         weeks = mod.weeks_from_range(date(2026, 8, 10), date(2026, 8, 14), vacation=True)
         self.assertEqual(weeks["2026-08-10"], "отпуск")
 
+    def test_type_and_role_lists_drop_cko_and_vacation(self):
+        self.assertEqual(mod.TYPES, ["деливери", "дискавери"])
+        self.assertEqual(mod.ROLES, ["Дизайн", "SA", "PO", "BE", "FE", "QA", "Контент"])
+        self.assertEqual(mod.canonical_type("ЦКО"), "")
+        self.assertEqual(mod.canonical_type("деливери"), "деливери")
+        self.assertEqual(mod.canonical_role("Отпуск"), "")
+        self.assertTrue(mod.parse_vacation_flag("да"))
+        self.assertFalse(mod.parse_vacation_flag(""))
+
     def test_parse_canonical_team_aliases(self):
         self.assertEqual(mod.canonical_team("Фикса"), "ДИ")
         self.assertEqual(mod.canonical_team("Репрайсы"), "Монетизация")
@@ -40,7 +49,7 @@ class UnifiedPlanTest(unittest.TestCase):
                 "resource": "Шлотгауэр Иван",
                 "role": "QA",
                 "ticket": "B2CPROD-1",
-                "type": "ЦКО",
+                "type": "деливери",
                 "weeks": {"2026-08-31": "5", "2026-09-07": "2"},
             },
             {
@@ -50,6 +59,7 @@ class UnifiedPlanTest(unittest.TestCase):
                 "role": "Дизайн",
                 "ticket": "",
                 "type": "",
+                "vacation": True,
                 "weeks": {"2026-08-03": "отпуск"},
             },
         ]
@@ -64,8 +74,12 @@ class UnifiedPlanTest(unittest.TestCase):
         self.assertEqual(qa["role"], "QA")
         self.assertEqual(qa["weeks"]["2026-08-31"], "5")
         self.assertEqual(qa["weeks"]["2026-09-07"], "2")
+        self.assertEqual(qa["type"], "деливери")
+        self.assertFalse(qa.get("vacation"))
         vac = by_task["FMC"]
         self.assertEqual(vac["team"], "ДИ")
+        self.assertEqual(vac["role"], "Дизайн")
+        self.assertTrue(vac["vacation"])
         self.assertEqual(vac["weeks"]["2026-08-03"], "отпуск")
 
     def test_start_end_row_without_week_cells(self):
@@ -83,6 +97,7 @@ class UnifiedPlanTest(unittest.TestCase):
                 "деливери",
                 "Роган Татьяна",
                 "SA",
+                "",
                 date(2026, 8, 3),
                 date(2026, 8, 7),
                 3,
@@ -106,7 +121,9 @@ class UnifiedPlanTest(unittest.TestCase):
         ws = wb.active
         ws.title = "План"
         ws.append(mod.PLAN_HEADERS)
-        ws.append(["Тарифы", "ПРИМЕР: не грузить", "", "", "Косенко Данил", "FE", date(2026, 8, 3), date(2026, 8, 7), "", ""])
+        ws.append(
+            ["Тарифы", "ПРИМЕР: не грузить", "", "", "Косенко Данил", "FE", "", date(2026, 8, 3), date(2026, 8, 7), "", ""]
+        )
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "example.xlsx"
             wb.save(path)
@@ -135,14 +152,22 @@ class UnifiedPlanTest(unittest.TestCase):
             self.assertEqual(wb.sheetnames, ["Инструкция", "Справочник", "План"])
             plan = wb["План"]
             self.assertEqual(plan["A1"].value, "Команда")
-            self.assertTrue(str(plan["K1"].value).count("."))
+            self.assertEqual(plan["G1"].value, "Отпуск")
+            self.assertTrue(str(plan["L1"].value).count("."))
             self.assertTrue(str(plan["B2"].value).startswith("ПРИМЕР"))
             self.assertEqual(mod.parse_workbook(path), [])
+            types = [row[0] for row in wb["Справочник"].iter_rows(min_row=2, min_col=3, max_col=3, values_only=True) if row[0]]
+            roles = [row[0] for row in wb["Справочник"].iter_rows(min_row=2, min_col=7, max_col=7, values_only=True) if row[0]]
+            self.assertEqual(types, ["деливери", "дискавери"])
+            self.assertEqual(roles, ["Дизайн", "SA", "PO", "BE", "FE", "QA", "Контент"])
             people = [row[0] for row in wb["Справочник"].iter_rows(min_row=2, min_col=5, max_col=5, values_only=True) if row[0]]
             self.assertIn("Шлотгауэр Иван", people)
             self.assertIn("Косенко Данил", people)
             self.assertIn("Титов Иван", people)
             self.assertIn("Потребность QA", people)
+            week_lists = [dv.formula1 for dv in plan.data_validations.dataValidation]
+            self.assertTrue(any(item == '"1,2,3,4,5"' for item in week_lists))
+            self.assertFalse(any("отпуск" in (item or "").lower() and "1,2,3,4,5" in (item or "") for item in week_lists))
 
     def test_parse_incoming_skips_old_color_workbooks(self):
         from openpyxl import Workbook
@@ -162,7 +187,7 @@ class UnifiedPlanTest(unittest.TestCase):
                         "resource": "Косенко Данил",
                         "role": "FE",
                         "ticket": "",
-                        "type": "ЦКО",
+                        "type": "деливери",
                         "weeks": {"2026-08-10": "3"},
                     }
                 ],
@@ -172,6 +197,69 @@ class UnifiedPlanTest(unittest.TestCase):
         self.assertEqual(len(parsed), 1)
         self.assertEqual(parsed[0]["team"], "Тарифы")
         self.assertEqual(parsed[0]["resource"], "Косенко Данил")
+
+    def test_vacation_column_keeps_real_role(self):
+        from openpyxl import Workbook
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "План"
+        ws.append(mod.PLAN_HEADERS)
+        ws.append(
+            [
+                "Монетизация",
+                "Отпуск",
+                "",
+                "",
+                "Роган Татьяна",
+                "SA",
+                "да",
+                date(2026, 9, 7),
+                date(2026, 9, 11),
+                "",
+                "",
+            ]
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "vacation.xlsx"
+            wb.save(path)
+            parsed = mod.parse_workbook(path)
+        self.assertEqual(len(parsed), 1)
+        self.assertEqual(parsed[0]["role"], "SA")
+        self.assertTrue(parsed[0]["vacation"])
+        self.assertEqual(parsed[0]["weeks"]["2026-09-07"], "отпуск")
+        self.assertEqual(parsed[0]["type"], "")
+
+    def test_export_strips_cko_and_splits_vacation_from_role(self):
+        entries = [
+            {
+                "team": "Тарифы",
+                "task": "Карточка",
+                "resource": "Косенко Данил",
+                "role": "FE",
+                "ticket": "",
+                "type": "ЦКО",
+                "weeks": {"2026-08-10": "3"},
+            },
+            {
+                "team": "Монетизация",
+                "task": "Отпуск",
+                "resource": "Роган Татьяна",
+                "role": "Отпуск",
+                "ticket": "",
+                "type": "",
+                "weeks": {"2026-09-07": "отпуск"},
+            },
+        ]
+        exported = []
+        for item in entries:
+            exported.extend(mod.entries_for_template([item]))
+        by_task = {item["task"]: item for item in exported}
+        self.assertEqual(by_task["Карточка"]["type"], "")
+        self.assertFalse(by_task["Карточка"]["vacation"])
+        vac = by_task["Отпуск"]
+        self.assertTrue(vac["vacation"])
+        self.assertEqual(vac["role"], "SA")
 
 
 if __name__ == "__main__":
