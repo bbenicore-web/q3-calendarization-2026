@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -11,6 +12,9 @@ from pathlib import Path
 from openpyxl import load_workbook
 
 ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from unified_plan import parse_incoming
+
 INCOMING = ROOT / "incoming"
 OUT = ROOT / "data-h2-2026.json"
 
@@ -603,6 +607,10 @@ TEAMS = {
 
 
 def main():
+    unified_by_team: dict[str, list[dict]] = {}
+    for item in parse_incoming(INCOMING):
+        unified_by_team.setdefault(item["team"], []).append(item)
+
     entries = []
     sources = {
         "Монетизация": parse_monetization,
@@ -612,8 +620,24 @@ def main():
         "Тарифы": parse_tariffs_cko,
     }
     for name, fn in sources.items():
-        part = fn()
-        print(f"{name}: {len(part)} entries")
+        if name in unified_by_team:
+            part = []
+            for item in unified_by_team[name]:
+                row = entry(
+                    item["team"],
+                    item["task"],
+                    item["resource"],
+                    item["role"],
+                    item.get("ticket", ""),
+                    item.get("type", ""),
+                    clip_weeks(item.get("weeks") or {}),
+                )
+                if row:
+                    part.append(row)
+            print(f"{name}: {len(part)} entries (единый Excel)")
+        else:
+            part = fn()
+            print(f"{name}: {len(part)} entries")
         entries.extend(part)
 
     entries = merge_entries(entries)
