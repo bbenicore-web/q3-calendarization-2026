@@ -155,6 +155,19 @@ class UnifiedPlanTest(unittest.TestCase):
             self.assertEqual(plan["G1"].value, "Отпуск")
             self.assertTrue(str(plan["L1"].value).count("."))
             self.assertTrue(str(plan["B2"].value).startswith("ПРИМЕР"))
+            example_teams = {
+                plan.cell(r, 1).value
+                for r in range(2, plan.max_row + 1)
+                if str(plan.cell(r, 2).value or "").startswith("ПРИМЕР")
+            }
+            self.assertEqual(example_teams, {"МегаИнтернет"})
+            example_tasks = {
+                plan.cell(r, 2).value
+                for r in range(2, plan.max_row + 1)
+                if str(plan.cell(r, 2).value or "").startswith("ПРИМЕР")
+            }
+            self.assertIn("ПРИМЕР: 5G кино", example_tasks)
+            self.assertGreaterEqual(len(example_tasks), 5)
             self.assertEqual(mod.parse_workbook(path), [])
             types = [row[0] for row in wb["Справочник"].iter_rows(min_row=2, min_col=3, max_col=3, values_only=True) if row[0]]
             roles = [row[0] for row in wb["Справочник"].iter_rows(min_row=2, min_col=7, max_col=7, values_only=True) if row[0]]

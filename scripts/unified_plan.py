@@ -555,7 +555,7 @@ def _write_instructions(ws):
         "Все команды заполняют один и тот же Excel. Цвета ячеек больше не означают занятость. Занятость — это даты и числа дней. Отпуск отмечается отдельно.",
         "",
         "Что заполнять",
-        "Только лист «План». Строки «ПРИМЕР: …» жёлтые — удалите их перед отправкой, в таймплан они не попадут.",
+        "Только лист «План». Жёлтые строки — полный пример из таймплана МегаИнтернета. Удалите их перед отправкой, в таймплан они не попадут.",
         "",
         "Колонки",
         "Команда — только из списка: Монетизация, Домашний интернет, ДГП, МегаИнтернет, Тарифы. Фикса = Домашний интернет, Репрайсы = Монетизация.",
@@ -632,27 +632,22 @@ def _write_reference(ws, people):
     ws.merge_cells(start_row=note_row, start_column=1, end_row=note_row, end_column=8)
 
 
-def _example_rows(weeks: list[date]) -> list[list]:
-    week_index = {iso(week): idx for idx, week in enumerate(weeks)}
-    examples = [
-        {
-            "team": "Монетизация",
-            "task": "ПРИМЕР: МегаСилы в ЛК",
-            "resource": "Роган Татьяна",
-            "role": "SA",
-            "ticket": "",
-            "type": "деливери",
-            "weeks": {"2026-08-03": "5", "2026-08-10": "5"},
-        },
-        {
-            "team": "ДИ",
-            "task": "ПРИМЕР: FMC",
-            "resource": "Егор",
-            "role": "Дизайн",
-            "ticket": "B2CPROD-1055",
-            "type": "",
-            "weeks": {"2026-08-03": "2"},
-        },
+def _megainternet_example_entries() -> list[dict]:
+    if DATA_PATH.exists():
+        payload = json.loads(DATA_PATH.read_text(encoding="utf-8"))
+        rows = []
+        for item in payload.get("entries") or []:
+            if item.get("team") != "МегаИнтернет":
+                continue
+            task = re.sub(r"\s+", " ", str(item.get("task") or "").strip())
+            if not task:
+                continue
+            if not task.upper().startswith("ПРИМЕР"):
+                task = f"ПРИМЕР: {task}"
+            rows.append({**item, "task": task, "team": "МегаИнтернет"})
+        if rows:
+            return rows
+    return [
         {
             "team": "МегаИнтернет",
             "task": "ПРИМЕР: 5G кино",
@@ -661,19 +656,13 @@ def _example_rows(weeks: list[date]) -> list[list]:
             "ticket": "",
             "type": "",
             "weeks": {"2026-08-03": "2", "2026-08-10": "5"},
-        },
-        {
-            "team": "Монетизация",
-            "task": "ПРИМЕР: отпуск",
-            "resource": "Роган Татьяна",
-            "role": "SA",
-            "ticket": "",
-            "type": "",
-            "vacation": True,
-            "weeks": {"2026-09-07": "отпуск"},
-        },
+        }
     ]
-    return [_entry_to_row(item, weeks, week_index) for item in examples]
+
+
+def _example_rows(weeks: list[date]) -> list[list]:
+    week_index = {iso(week): idx for idx, week in enumerate(weeks)}
+    return [_entry_to_row(item, weeks, week_index) for item in entries_for_template(_megainternet_example_entries())]
 
 
 def _entry_to_row(entry: dict, weeks: list[date], week_index: dict | None = None) -> list:
