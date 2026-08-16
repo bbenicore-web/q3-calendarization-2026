@@ -141,6 +141,7 @@ META_HEADERS = [
     "Отпуск",
     "Начало",
     "Окончание",
+    "К работе",
     "Чел-дни",
     "Примечание",
 ]
@@ -178,6 +179,36 @@ def plan_weeks() -> list[date]:
 
 def week_label(d: date) -> str:
     return f"{d.day:02d}.{d.month:02d}"
+
+
+def first_week_col() -> int:
+    return len(META_HEADERS) + 1
+
+
+def auto_start_formula(row: int, week_first: str, week_last: str) -> str:
+    rng = f"{week_first}{row}:{week_last}{row}"
+    hdr = f"${week_first}$1:${week_last}$1"
+    return (
+        f'IF(COUNTA({rng})=0,"",'
+        f"INDEX({hdr},AGGREGATE(15,6,(COLUMN({hdr})-COLUMN(${week_first}$1)+1)/({rng}<>\"\"),1)))"
+    )
+
+
+def auto_end_formula(row: int, week_first: str, week_last: str) -> str:
+    rng = f"{week_first}{row}:{week_last}{row}"
+    hdr = f"${week_first}$1:${week_last}$1"
+    last_monday = f"INDEX({hdr},AGGREGATE(14,6,(COLUMN({hdr})-COLUMN(${week_first}$1)+1)/({rng}<>\"\"),1))"
+    last_days = f'IFERROR(LOOKUP(2,1/({rng}<>""),{rng}),1)'
+    return f'IF(COUNTA({rng})=0,"",{last_monday}+MAX(0,{last_days}-1))'
+
+
+def auto_return_formula(row: int) -> str:
+    return f'IF(I{row}="","",WORKDAY(I{row},1))'
+
+
+def auto_person_days_formula(row: int, week_first: str, week_last: str) -> str:
+    rng = f"{week_first}{row}:{week_last}{row}"
+    return f'IF(COUNTA({rng}),SUM({rng}),IF(AND(H{row}<>"",I{row}<>""),NETWORKDAYS(H{row},I{row}),""))'
 
 
 def canonical_team(raw: str) -> str:
@@ -252,6 +283,8 @@ def occupancy_cell(raw) -> str:
     if isinstance(raw, bool):
         return "1" if raw else ""
     if isinstance(raw, datetime):
+        return ""
+    if isinstance(raw, str) and raw.startswith("="):
         return ""
     if isinstance(raw, (int, float)):
         n = int(raw)
@@ -447,8 +480,15 @@ def write_workbook(path: Path, entries: list[dict] | None = None, include_exampl
 
     ws = wb.create_sheet("План")
     ws.append(headers)
-    for col, _title in enumerate(headers, 1):
+    for col, title in enumerate(headers, 1):
         cell = ws.cell(1, col)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = Alignment(horizontal="center", wrap_text=True, vertical="center")
+        cell.border = THIN
+    for col, week in enumerate(weeks, first_week_col()):
+        cell = ws.cell(1, col, week)
+        cell.number_format = "DD.MM"
         cell.fill = HEADER_FILL
         cell.font = HEADER_FONT
         cell.alignment = Alignment(horizontal="center", wrap_text=True, vertical="center")
@@ -471,9 +511,11 @@ def write_workbook(path: Path, entries: list[dict] | None = None, include_exampl
         for cell in row:
             cell.border = THIN
             cell.font = Font(name="Calibri", size=11)
-            if cell.column in (8, 9):
+            if cell.column in (8, 9, 10):
                 cell.number_format = "DD.MM.YYYY"
-            if cell.column >= 12:
+            if cell.column == 11:
+                cell.number_format = "0"
+            if cell.column >= first_week_col():
                 cell.alignment = Alignment(horizontal="center")
         task = str(ws.cell(row[0].row, 2).value or "")
         if task.upper().startswith("ПРИМЕР"):
@@ -493,8 +535,9 @@ def write_workbook(path: Path, entries: list[dict] | None = None, include_exampl
         7: 10,
         8: 13,
         9: 13,
-        10: 10,
-        11: 18,
+        10: 13,
+        11: 10,
+        12: 18,
     }
     for col in range(1, len(headers) + 1):
         ws.column_dimensions[get_column_letter(col)].width = widths.get(col, 7)
@@ -520,7 +563,7 @@ def write_workbook(path: Path, entries: list[dict] | None = None, include_exampl
     dv_person.add(f"E2:E{last_row}")
     dv_role.add(f"F2:F{last_row}")
     dv_vacation.add(f"G2:G{last_row}")
-    dv_week.add(f"L2:{last_col}{last_row}")
+    dv_week.add(f"{get_column_letter(first_week_col())}2:{last_col}{last_row}")
 
     for team in TEAMS:
         fill = PatternFill("solid", fgColor=team["bg"])
@@ -530,10 +573,15 @@ def write_workbook(path: Path, entries: list[dict] | None = None, include_exampl
             FormulaRule(formula=[f'$A2="{team["full"]}"'], fill=fill, font=font),
         )
 
-    for col, week in enumerate(weeks, 12):
-        ws.cell(1, col).comment = None
-        ws.cell(1, col).value = week_label(week)
-
+    week_first = get_column_letter(first_week_col())
+    for r in range(2, last_row + 1):
+        ws.cell(r, 8).value = f"={auto_start_formula(r, week_first, last_col)}"
+        ws.cell(r, 9).value = f"={auto_end_formula(r, week_first, last_col)}"
+        ws.cell(r, 10).value = f"={auto_return_formula(r)}"
+        ws.cell(r, 11).value = f"={auto_person_days_formula(r, week_first, last_col)}"
+        for col in (8, 9, 10):
+            ws.cell(r, col).number_format = "DD.MM.YYYY"
+        ws.cell(r, 11).number_format = "0"
     ws_help.sheet_properties.tabColor = "3DD6C3"
     ws.sheet_properties.tabColor = "2E75B6"
     ws_ref.sheet_state = "visible"
@@ -564,10 +612,10 @@ def _write_instructions(ws):
         "Тип — только деливери или дискавери, либо пусто. ЦКО не пишите.",
         "Исполнитель — только из списка. Не пишите FE, бэк, DUX, Касенко, Шлогауэр.",
         "Роль — Дизайн / SA / PO / BE / FE / QA / Контент. Если не указать, подставится роль из штата. Отпуск ролью не является.",
-        "Отпуск — поставьте «да», если эта строка про нерабочие дни человека. Роль оставьте настоящей (QA, SA, …). Даты начала и окончания — период отпуска.",
-        "Начало и Окончание — рабочие даты включительно. Выходные игнорируются.",
-        "Чел-дни — необязательно и только для работы, не для отпуска. Если пусто, считаются все будни между началом и окончанием. Если указано 3 при пяти днях в диапазоне, в план попадут первые 3 будня.",
-        "Недели справа — занятость работой: 1–5. Если заполнены, они важнее дат. В отпускные недели ничего не ставьте: отпуск уже отмечен колонкой «Отпуск».",
+        "Отпуск — поставьте «да», если эта строка про нерабочие дни человека. Роль оставьте настоящей (QA, SA, …). В неделях справа поставьте 1–5 — сколько дней этой недели человек не работает. Начало, окончание и «К работе» заполнятся сами: к работе = следующий рабочий день после окончания отпуска.",
+        "Начало, Окончание и К работе — считаются сами по первой и последней заполненной неделе. Если недели пустые, можно вписать даты вручную.",
+        "Чел-дни считаются сами: сумма чисел в неделях или число будней между началом и окончанием, если недели пустые.",
+        "Недели справа — занятость работой: 1–5. Если отпуск = да, те же числа — нерабочие дни роли. После последней заполненной недели человек возвращается к работе в дату из колонки «К работе».",
         "",
         "Чего нельзя делать",
         "Не закрашивайте недели цветом вместо числа. Цвет команды в колонке «Команда» ставится сам и в расчёт не идёт.",
@@ -576,7 +624,7 @@ def _write_instructions(ws):
         "Потребность без человека — выберите «Потребность SA/FE/BE/QA/дизайн/контент». Это спрос без FTE.",
         "",
         "Отпуска",
-        "Отдельная строка на человека: роль из списка, в колонке «Отпуск» — да, даты периода. Эти дни у человека не рабочие и в спрос не идут.",
+        "Отдельная строка: роль из списка, Отпуск = да, в неделях 1–5. Период виден в Начале и Окончании, дата возврата — в «К работе». Эти дни в спрос не идут.",
         "",
         "Как отдать файл",
         "Сохраните как .xlsx и пришлите целиком. Можно один общий файл на все команды или по файлу на команду — структура листа «План» должна совпадать.",
@@ -669,9 +717,6 @@ def _entry_to_row(entry: dict, weeks: list[date], week_index: dict | None = None
     week_index = week_index or {iso(week): idx for idx, week in enumerate(weeks)}
     vacation = bool(entry.get("vacation"))
     occupancy = entry.get("weeks") or {}
-    if vacation:
-        occupancy = {week: "отпуск" for week in occupancy}
-    start, end = first_last_dates(occupancy)
     row = [""] * (len(META_HEADERS) + len(weeks))
     row[0] = display_team(canonical_team(entry.get("team") or ""))
     row[1] = entry.get("task") or ""
@@ -680,18 +725,15 @@ def _entry_to_row(entry: dict, weeks: list[date], week_index: dict | None = None
     row[4] = canonical_resource(entry.get("resource") or "")
     row[5] = canonical_role(entry.get("role") or "") or role_for_resource(entry.get("resource") or "")
     row[6] = "да" if vacation else ""
-    row[7] = start
-    row[8] = end
-    row[9] = None if vacation else (person_days_of(occupancy) or None)
-    row[10] = ""
-    if not vacation:
-        for week_iso, value in occupancy.items():
-            idx = week_index.get(week_iso)
-            if idx is None:
-                continue
-            cell = occupancy_cell(value)
-            if cell.isdigit():
-                row[len(META_HEADERS) + idx] = int(cell)
+    for week_iso, value in occupancy.items():
+        idx = week_index.get(week_iso)
+        if idx is None:
+            continue
+        cell = occupancy_cell(value)
+        if cell == "отпуск" or vacation:
+            row[len(META_HEADERS) + idx] = int(cell) if cell.isdigit() else 5
+        elif cell.isdigit():
+            row[len(META_HEADERS) + idx] = int(cell)
     return row
 
 
@@ -700,15 +742,26 @@ def parse_workbook(path: Path) -> list[dict]:
     if "План" not in wb.sheetnames:
         raise ValueError(f"{path}: нет листа «План»")
     ws = wb["План"]
-    header = [str(cell.value or "").strip() for cell in next(ws.iter_rows(min_row=1, max_row=1))]
-    col = {name: idx for idx, name in enumerate(header)}
+    header_cells = list(next(ws.iter_rows(min_row=1, max_row=1)))
+    header = []
     week_cols = {}
-    for idx, title in enumerate(header):
-        if re.fullmatch(r"\d{2}\.\d{2}", title):
-            day, month = title.split(".")
-            week_cols[idx] = iso(monday_of(date(PLAN_YEAR, int(month), int(day))))
-        elif re.fullmatch(r"\d{4}-\d{2}-\d{2}", title):
-            week_cols[idx] = iso(monday_of(date.fromisoformat(title)))
+    for idx, cell in enumerate(header_cells):
+        val = cell.value
+        if isinstance(val, datetime):
+            header.append(week_label(val.date()))
+            week_cols[idx] = iso(monday_of(val.date()))
+        elif isinstance(val, date):
+            header.append(week_label(val))
+            week_cols[idx] = iso(monday_of(val))
+        else:
+            title = str(val or "").strip()
+            header.append(title)
+            if re.fullmatch(r"\d{2}\.\d{2}", title):
+                day, month = title.split(".")
+                week_cols[idx] = iso(monday_of(date(PLAN_YEAR, int(month), int(day))))
+            elif re.fullmatch(r"\d{4}-\d{2}-\d{2}", title):
+                week_cols[idx] = iso(monday_of(date.fromisoformat(title)))
+    col = {name: idx for idx, name in enumerate(header)}
 
     def take(values, name, default=""):
         idx = col.get(name)

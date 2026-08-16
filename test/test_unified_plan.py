@@ -100,6 +100,7 @@ class UnifiedPlanTest(unittest.TestCase):
                 "",
                 date(2026, 8, 3),
                 date(2026, 8, 7),
+                "",
                 3,
                 "",
             ]
@@ -122,7 +123,7 @@ class UnifiedPlanTest(unittest.TestCase):
         ws.title = "План"
         ws.append(mod.PLAN_HEADERS)
         ws.append(
-            ["Тарифы", "ПРИМЕР: не грузить", "", "", "Косенко Данил", "FE", "", date(2026, 8, 3), date(2026, 8, 7), "", ""]
+            ["Тарифы", "ПРИМЕР: не грузить", "", "", "Косенко Данил", "FE", "", date(2026, 8, 3), date(2026, 8, 7), "", "", ""]
         )
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "example.xlsx"
@@ -142,6 +143,18 @@ class UnifiedPlanTest(unittest.TestCase):
         self.assertEqual(mod.canonical_resource("Володя (SA) нужен еще один"), "Володя (SA) нужен еще один")
         self.assertEqual(mod.canonical_resource("в помощь Володе"), "в помощь Володе")
 
+    def test_auto_formulas_use_first_and_last_week_cells(self):
+        start = mod.auto_start_formula(2, "M", "AM")
+        end = mod.auto_end_formula(2, "M", "AM")
+        days = mod.auto_person_days_formula(2, "M", "AM")
+        back = mod.auto_return_formula(2)
+        self.assertIn("COUNTA(M2:AM2)", start)
+        self.assertIn("AGGREGATE(15", start)
+        self.assertIn("AGGREGATE(14", end)
+        self.assertIn("SUM(M2:AM2)", days)
+        self.assertIn("NETWORKDAYS(H2,I2)", days)
+        self.assertIn("WORKDAY(I2,1)", back)
+
     def test_workbook_has_instruction_plan_and_reference(self):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "tpl.xlsx"
@@ -153,7 +166,15 @@ class UnifiedPlanTest(unittest.TestCase):
             plan = wb["План"]
             self.assertEqual(plan["A1"].value, "Команда")
             self.assertEqual(plan["G1"].value, "Отпуск")
-            self.assertTrue(str(plan["L1"].value).count("."))
+            self.assertEqual(plan["J1"].value, "К работе")
+            self.assertEqual(plan["K1"].value, "Чел-дни")
+            self.assertTrue(isinstance(plan["M1"].value, date) or str(plan["M1"].value).count("."))
+            self.assertTrue(str(plan["H2"].value).startswith("="))
+            self.assertTrue(str(plan["I2"].value).startswith("="))
+            self.assertTrue(str(plan["J2"].value).startswith("="))
+            self.assertTrue(str(plan["K2"].value).startswith("="))
+            self.assertIn("NETWORKDAYS", str(plan["K2"].value))
+            self.assertIn("WORKDAY", str(plan["J2"].value))
             self.assertTrue(str(plan["B2"].value).startswith("ПРИМЕР"))
             example_teams = {
                 plan.cell(r, 1).value
@@ -229,6 +250,7 @@ class UnifiedPlanTest(unittest.TestCase):
                 "да",
                 date(2026, 9, 7),
                 date(2026, 9, 11),
+                "",
                 "",
                 "",
             ]
