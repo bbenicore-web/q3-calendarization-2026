@@ -27,10 +27,12 @@ class UnifiedPlanTest(unittest.TestCase):
         self.assertEqual(weeks["2026-08-10"], "отпуск")
 
     def test_type_and_role_lists_drop_cko_and_vacation(self):
-        self.assertEqual(mod.TYPES, ["деливери", "дискавери"])
+        self.assertEqual(mod.TYPES, ["деливери", "дискавери", "Тех долг"])
         self.assertEqual(mod.ROLES, ["Дизайн", "SA", "PO", "BE", "FE", "QA", "Контент"])
         self.assertEqual(mod.canonical_type("ЦКО"), "")
         self.assertEqual(mod.canonical_type("деливери"), "деливери")
+        self.assertEqual(mod.canonical_type("тех долг"), "Тех долг")
+        self.assertEqual(mod.canonical_type("tech debt"), "Тех долг")
         self.assertEqual(mod.canonical_role("Отпуск"), "")
         self.assertTrue(mod.parse_vacation_flag("да"))
         self.assertFalse(mod.parse_vacation_flag(""))
@@ -192,7 +194,7 @@ class UnifiedPlanTest(unittest.TestCase):
             self.assertEqual(mod.parse_workbook(path), [])
             types = [row[0] for row in wb["Справочник"].iter_rows(min_row=2, min_col=3, max_col=3, values_only=True) if row[0]]
             roles = [row[0] for row in wb["Справочник"].iter_rows(min_row=2, min_col=7, max_col=7, values_only=True) if row[0]]
-            self.assertEqual(types, ["деливери", "дискавери"])
+            self.assertEqual(types, ["деливери", "дискавери", "Тех долг"])
             self.assertEqual(roles, ["Дизайн", "SA", "PO", "BE", "FE", "QA", "Контент"])
             people = [row[0] for row in wb["Справочник"].iter_rows(min_row=2, min_col=5, max_col=5, values_only=True) if row[0]]
             self.assertIn("Шлотгауэр Иван", people)

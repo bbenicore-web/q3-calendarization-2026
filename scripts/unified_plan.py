@@ -72,7 +72,7 @@ ROLE_ALIASES = {
     "контент": "Контент",
     "копирайт": "Контент",
 }
-TYPES = ["деливери", "дискавери"]
+TYPES = ["деливери", "дискавери", "Тех долг"]
 NEED_RESOURCES = [
     "Потребность дизайн",
     "Потребность SA",
@@ -243,6 +243,8 @@ def canonical_type(raw: str) -> str:
         return "деливери"
     if low in {"дискавери", "discovery"}:
         return "дискавери"
+    if low in {"тех долг", "техдолг", "tech debt", "techdebt"}:
+        return "Тех долг"
     return ""
 
 
@@ -548,7 +550,7 @@ def write_workbook(path: Path, entries: list[dict] | None = None, include_exampl
     roles_end = 1 + len(ROLES)
 
     dv_team = DataValidation(type="list", formula1="=Справочник!$A$2:$A$6", allow_blank=True)
-    dv_type = DataValidation(type="list", formula1="=Справочник!$C$2:$C$3", allow_blank=True)
+    dv_type = DataValidation(type="list", formula1=f"=Справочник!$C$2:$C${1 + len(TYPES)}", allow_blank=True)
     dv_person = DataValidation(type="list", formula1=f"=Справочник!$E$2:$E${people_end}", allow_blank=True)
     dv_role = DataValidation(type="list", formula1=f"=Справочник!$G$2:$G${roles_end}", allow_blank=True)
     dv_vacation = DataValidation(type="list", formula1='"да"', allow_blank=True)
@@ -609,7 +611,7 @@ def _write_instructions(ws):
         "Команда — только из списка: Монетизация, Домашний интернет, ДГП, МегаИнтернет, Тарифы. Фикса = Домашний интернет, Репрайсы = Монетизация.",
         "Задача — одно название на одну строку исполнителя. Несколько людей на задачу = несколько строк.",
         "Тикет — B2CPROD-… / CKO-…, если есть.",
-        "Тип — только деливери или дискавери, либо пусто. ЦКО не пишите.",
+        "Тип — деливери, дискавери или Тех долг, либо пусто. ЦКО не пишите.",
         "Исполнитель — только из списка. Не пишите FE, бэк, DUX, Касенко, Шлогауэр.",
         "Роль — Дизайн / SA / PO / BE / FE / QA / Контент. Если не указать, подставится роль из штата. Отпуск ролью не является.",
         "Отпуск — поставьте «да», если эта строка про нерабочие дни человека. Роль оставьте настоящей (QA, SA, …). В неделях справа поставьте 1–5 — сколько дней этой недели человек не работает. Начало, окончание и «К работе» заполнятся сами: к работе = следующий рабочий день после окончания отпуска.",
