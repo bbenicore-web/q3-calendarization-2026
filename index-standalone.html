@@ -63,6 +63,19 @@ html, body {
 .brand h1 { font-size: 1.28rem; font-weight: 720; letter-spacing: -0.02em; }
 .brand p, .updated { color: var(--muted); font-size: 0.82rem; }
 
+.template-downloads { display: flex; flex-wrap: wrap; gap: 0.45rem; justify-content: flex-end; }
+.download-link {
+  border: 1px solid var(--line);
+  background: var(--accent-dim);
+  color: var(--accent);
+  border-radius: 999px;
+  padding: 0.38rem 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 650;
+  text-decoration: none;
+}
+.download-link:hover { border-color: var(--accent); }
+
 .topbar-right {
   display: flex;
   flex-direction: column;
@@ -305,6 +318,10 @@ footer code { color: var(--accent); }
       </div>
       <div class="topbar-right">
         <div class="timeline-switch" id="timelineSwitch" aria-label="Таймлайны"></div>
+        <div class="template-downloads">
+          <a class="download-link" href="templates/calendarization_template.xlsx" download="Календаризация_шаблон.xlsx">Скачать шаблон Excel</a>
+          <a class="download-link" href="templates/calendarization_current_plan.xlsx" download="Календаризация_текущий_план.xlsx">Текущий план</a>
+        </div>
         <div class="updated" id="generated"></div>
       </div>
     </header>

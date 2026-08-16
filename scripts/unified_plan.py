@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -820,6 +821,8 @@ def write_default_templates(data_path: Path | None = None) -> tuple[Path, Path]:
         payload = json.loads(source.read_text(encoding="utf-8"))
         current = payload.get("entries") or []
     write_workbook(filled, entries=current, include_examples=False)
+    shutil.copy2(empty, TEMPLATE_DIR / "calendarization_template.xlsx")
+    shutil.copy2(filled, TEMPLATE_DIR / "calendarization_current_plan.xlsx")
     return empty, filled
 
 
