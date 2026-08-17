@@ -4,6 +4,11 @@ import assert from 'node:assert/strict';
 import {
   occupancyDays,
   weekMonthKey,
+  weekQuarterKey,
+  formatQuarterLabel,
+  formatQuarterSpan,
+  quartersFromWeeks,
+  weeksInQuarters,
   WORK_DAYS_PER_MONTH,
   rolePersonDays,
 } from '../process.js';
@@ -22,6 +27,37 @@ test('weekMonthKey uses the Wednesday of the ISO week', () => {
   assert.equal(weekMonthKey('2026-08-03'), '2026-08');
   assert.equal(weekMonthKey('2026-08-31'), '2026-09');
   assert.equal(weekMonthKey('2026-06-29'), '2026-07');
+});
+
+test('weekQuarterKey follows the Wednesday month of the ISO week', () => {
+  assert.equal(weekQuarterKey('2026-06-29'), '2026-Q3');
+  assert.equal(weekQuarterKey('2026-08-03'), '2026-Q3');
+  assert.equal(weekQuarterKey('2026-08-31'), '2026-Q3');
+  assert.equal(weekQuarterKey('2026-09-28'), '2026-Q3');
+  assert.equal(weekQuarterKey('2026-10-05'), '2026-Q4');
+  assert.equal(weekQuarterKey('2026-12-21'), '2026-Q4');
+});
+
+test('formatQuarterLabel and quartersFromWeeks use 3Q 2026 style labels', () => {
+  assert.equal(formatQuarterLabel('2026-Q3'), '3Q 2026');
+  assert.equal(formatQuarterLabel('2026-Q4'), '4Q 2026');
+  assert.equal(formatQuarterSpan(['2026-Q3']), 'июл–сен');
+  assert.equal(formatQuarterSpan(['2026-Q3', '2026-Q4']), 'июл–дек');
+  const weeks = [
+    { iso: '2026-06-29', label: '29.06' },
+    { iso: '2026-08-03', label: '03.08' },
+    { iso: '2026-10-05', label: '05.10' },
+    { iso: '2026-12-21', label: '21.12' },
+  ];
+  assert.deepEqual(quartersFromWeeks(weeks), ['2026-Q3', '2026-Q4']);
+  assert.deepEqual(
+    weeksInQuarters(weeks, ['2026-Q3']).map((week) => week.iso),
+    ['2026-06-29', '2026-08-03']
+  );
+  assert.deepEqual(
+    weeksInQuarters(weeks, []).map((week) => week.iso),
+    weeks.map((week) => week.iso)
+  );
 });
 
 const megaDesignRoster = {
@@ -291,5 +327,23 @@ test('h2 roster: 5 designers, shared BE once, Monetization design is pure defici
   assert.equal(diBe.fte, 0.5);
   const diDesign = di.rows.find((row) => row.role === 'Дизайн');
   assert.equal(diDesign.fte, 1);
+});
+
+test('rolePersonDays capacity for a quarter is FTE × 22 × months in that quarter', () => {
+  const roster = JSON.parse(readFileSync(new URL('../roster.json', import.meta.url), 'utf8'));
+  const raw = JSON.parse(readFileSync(new URL('../data-h2-2026.json', import.meta.url), 'utf8'));
+  const q3Weeks = weeksInQuarters(raw.weeks, ['2026-Q3']);
+  const q3 = rolePersonDays({ weeks: q3Weeks, entries: raw.entries, roster });
+  assert.deepEqual(q3.months, ['2026-07', '2026-08', '2026-09']);
+  const q3Design = q3.rows.find((row) => row.role === 'Дизайн');
+  assert.equal(q3Design.fte, 5);
+  assert.equal(q3Design.capacity, 5 * WORK_DAYS_PER_MONTH * 3);
+
+  const q4Weeks = weeksInQuarters(raw.weeks, ['2026-Q4']);
+  const q4 = rolePersonDays({ weeks: q4Weeks, entries: raw.entries, roster });
+  assert.deepEqual(q4.months, ['2026-10', '2026-11', '2026-12']);
+  const q4Design = q4.rows.find((row) => row.role === 'Дизайн');
+  assert.equal(q4Design.capacity, 5 * WORK_DAYS_PER_MONTH * 3);
+  assert.ok(q3Design.days !== q4Design.days, 'Q3 and Q4 design demand should differ');
 });
 

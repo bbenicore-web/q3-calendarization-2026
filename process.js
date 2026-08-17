@@ -55,6 +55,53 @@ export function formatMonthLabel(monthKey) {
   return months[Number(month) - 1] || monthKey;
 }
 
+export function weekQuarterKey(isoMonday) {
+  const monthKey = weekMonthKey(isoMonday);
+  if (!monthKey) return '';
+  const [year, month] = monthKey.split('-');
+  const quarter = Math.ceil(Number(month) / 3);
+  if (!Number.isFinite(quarter) || quarter < 1 || quarter > 4) return '';
+  return `${year}-Q${quarter}`;
+}
+
+export function formatQuarterLabel(quarterKey) {
+  const match = String(quarterKey || '').match(/^(\d{4})-Q([1-4])$/);
+  if (!match) return quarterKey || '';
+  return `${match[2]}Q ${match[1]}`;
+}
+
+export function quartersFromWeeks(weeks = []) {
+  return [...new Set(
+    weeks.map((week) => weekQuarterKey(week && (week.iso || week))).filter(Boolean)
+  )].sort();
+}
+
+export function weeksInQuarters(weeks = [], quarters) {
+  const list = Array.isArray(weeks) ? weeks : [];
+  const keys = Array.isArray(quarters)
+    ? quarters.filter(Boolean)
+    : [...(quarters || [])];
+  if (!keys.length) return list;
+  const allowed = new Set(keys);
+  return list.filter((week) => allowed.has(weekQuarterKey(week && (week.iso || week))));
+}
+
+export function formatQuarterSpan(quarterKeys = []) {
+  const months = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+  const keys = [...new Set([...quarterKeys].filter(Boolean))].sort();
+  const monthIndexes = [];
+  for (const key of keys) {
+    const match = String(key).match(/^(\d{4})-Q([1-4])$/);
+    if (!match) continue;
+    const start = (Number(match[2]) - 1) * 3;
+    monthIndexes.push(start, start + 2);
+  }
+  if (!monthIndexes.length) return '';
+  const first = Math.min(...monthIndexes);
+  const last = Math.max(...monthIndexes);
+  return `${months[first]}–${months[last]}`;
+}
+
 function balanceStatus(balance) {
   if (balance < 0) return 'дефицит';
   if (balance > 0) return 'профицит';

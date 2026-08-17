@@ -171,6 +171,11 @@ input[type="search"], select {
 }
 input[type="search"] { min-width: 240px; flex: 1; }
 .chip-group { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+#quarterChips:not([hidden]) {
+  padding-right: 0.65rem;
+  margin-right: 0.15rem;
+  border-right: 1px solid var(--line);
+}
 .chip {
   padding: 0.32rem 0.68rem;
   border-radius: 999px;
@@ -181,6 +186,7 @@ input[type="search"] { min-width: 240px; flex: 1; }
   color: var(--muted);
 }
 .chip.on { color: #fff; border-color: transparent; font-weight: 700; }
+#quarterChips .chip.on { background: var(--accent); color: #0b0f14; }
 
 .legend {
   display: flex;

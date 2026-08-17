@@ -1,4 +1,4 @@
-import { processTimeline, isVacation, roleMatrix, teamFull, weekCellLabel, rolePersonDays, formatMonthLabel, WORK_DAYS_PER_MONTH } from './process.js';
+import { processTimeline, isVacation, roleMatrix, teamFull, weekCellLabel, rolePersonDays, formatMonthLabel, formatQuarterLabel, formatQuarterSpan, quartersFromWeeks, weeksInQuarters, WORK_DAYS_PER_MONTH } from './process.js';
 
 const state = {
   catalog: [],
@@ -11,6 +11,7 @@ const state = {
   type: '',
   query: '',
   week: '',
+  quarters: new Set(),
   tab: 'gantt',
   sort: { col: null, asc: true },
 };
@@ -27,11 +28,49 @@ function esc(value) {
 function currentWeekIso(weeks) {
   const today = new Date();
   const todayKey = today.toISOString().slice(0, 10);
-  let current = weeks[0]?.iso || '';
+  let current = '';
   for (const week of weeks) {
     if (week.iso <= todayKey) current = week.iso;
   }
   return current;
+}
+
+function availableQuarters() {
+  return quartersFromWeeks(state.data?.weeks || []);
+}
+
+function selectedQuarterKeys() {
+  const all = availableQuarters();
+  const selected = all.filter((key) => state.quarters.has(key));
+  return selected.length ? selected : all;
+}
+
+function visibleWeeks() {
+  return weeksInQuarters(state.data.weeks, selectedQuarterKeys());
+}
+
+function visibleWeekSet() {
+  return new Set(visibleWeeks().map((week) => week.iso));
+}
+
+function syncUrl() {
+  const url = new URL(window.location.href);
+  if (state.timelineId) url.searchParams.set('timeline', state.timelineId);
+  const all = availableQuarters();
+  const selected = selectedQuarterKeys();
+  if (!all.length || selected.length === all.length) url.searchParams.delete('quarter');
+  else url.searchParams.set('quarter', selected.join(','));
+  history.replaceState({}, '', url);
+}
+
+function applyQuarterParam() {
+  const all = availableQuarters();
+  state.quarters = new Set(all);
+  const raw = new URLSearchParams(window.location.search).get('quarter');
+  if (!raw) return;
+  const available = new Set(all);
+  const requested = raw.split(/[+,]/).map((item) => item.trim()).filter((key) => available.has(key));
+  if (requested.length) state.quarters = new Set(requested);
 }
 
 function teamBadge(teamKey) {
@@ -90,6 +129,7 @@ async function loadTimeline(id) {
   state.type = '';
   state.query = '';
   state.week = '';
+  applyQuarterParam();
   state.sort = { col: null, asc: true };
   document.title = `${meta.title} — Календаризация команд`;
   document.getElementById('subtitle').textContent = meta.period
@@ -117,9 +157,7 @@ function renderTimelineSwitch() {
     btn.onclick = async () => {
       if (btn.dataset.id === state.timelineId) return;
       await loadTimeline(btn.dataset.id);
-      const url = new URL(window.location.href);
-      url.searchParams.set('timeline', state.timelineId);
-      history.replaceState({}, '', url);
+      syncUrl();
       bindStaticControls();
       renderAll();
     };
@@ -187,12 +225,15 @@ function matchesFilters(entry) {
   if (!state.activeTeams.has(entry.team)) return false;
   if (state.role && entry.role !== state.role) return false;
   if (state.type && entry.type !== state.type) return false;
-  if (state.week && !entry.weeks[state.week]) return false;
+  const vis = visibleWeekSet();
+  const occupied = Object.entries(entry.weeks || {}).some(([iso, value]) => value && vis.has(iso));
+  if (!occupied) return false;
+  if (state.week && vis.has(state.week) && !entry.weeks[state.week]) return false;
   if (state.query) {
     const hay = `${entry.task} ${entry.resource} ${entry.ticket} ${entry.role} ${entry.type}`.toLowerCase();
     if (!hay.includes(state.query)) return false;
   }
-  return Object.keys(entry.weeks || {}).length > 0;
+  return true;
 }
 
 function filterEntries() {
@@ -210,8 +251,42 @@ function isConflictWeekRole(weekIso, role) {
   return state.data.conflicts.some((conflict) => conflict.week === weekIso && conflict.role === role);
 }
 
+function renderQuarterChips() {
+  const root = document.getElementById('quarterChips');
+  if (!root) return;
+  const all = availableQuarters();
+  root.innerHTML = '';
+  if (all.length <= 1) {
+    root.hidden = true;
+    return;
+  }
+  root.hidden = false;
+  all.forEach((key) => {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = state.quarters.has(key) ? 'chip on' : 'chip';
+    chip.dataset.quarter = key;
+    chip.textContent = formatQuarterLabel(key);
+    chip.onclick = () => {
+      if (state.quarters.has(key)) {
+        state.quarters.delete(key);
+        if (!state.quarters.size) state.quarters = new Set(all);
+      } else {
+        state.quarters.add(key);
+      }
+      if (state.week && !visibleWeekSet().has(state.week)) state.week = '';
+      syncUrl();
+      renderAll();
+    };
+    root.appendChild(chip);
+  });
+}
+
 function visibleCapacity() {
-  const weeks = state.week ? state.data.weeks.filter((week) => week.iso === state.week) : state.data.weeks;
+  const baseWeeks = visibleWeeks();
+  const weeks = state.week && baseWeeks.some((week) => week.iso === state.week)
+    ? baseWeeks.filter((week) => week.iso === state.week)
+    : baseWeeks;
   const entries = state.data.entries.filter((entry) => {
     if (state.role && entry.role !== state.role) return false;
     if (state.type && entry.type !== state.type) return false;
@@ -251,11 +326,16 @@ function formatLoad(load) {
 function renderStats() {
   const active = state.data.entries.filter((entry) => Object.keys(entry.weeks || {}).length > 0);
   const visible = filterEntries();
+  const weeks = visibleWeeks();
+  const vis = visibleWeekSet();
+  const conflicts = state.data.conflicts.filter((conflict) => vis.has(conflict.week));
+  const quarterHint = selectedQuarterKeys().map(formatQuarterLabel).join(', ');
   document.getElementById('stats').innerHTML = [
     ['Строк в плане', visible.length, `из ${active.length}`],
-    ['Пересечений', state.data.conflicts.length, 'роль × неделя'],
-    ['Недель', state.data.weeks.length, state.data.weeks[0]?.label + ' — ' + state.data.weeks.at(-1)?.label],
+    ['Пересечений', conflicts.length, 'роль × неделя'],
+    ['Недель', weeks.length, (weeks[0]?.label || '') + ' — ' + (weeks.at(-1)?.label || '')],
     ['Команд', state.teamKeys.length, 'в выбранном таймлайне'],
+    ['Кварталы', selectedQuarterKeys().length, quarterHint || 'в выбранном таймлайне'],
     ['Ролей в дефиците', visibleCapacity().rows.filter((row) => row.balance < 0).length, `штат × ${WORK_DAYS_PER_MONTH} дн./мес.`],
   ].map(([label, value, hint]) => `
     <article class="stat">
@@ -267,8 +347,10 @@ function renderStats() {
 }
 
 function renderHeatmap() {
-  const current = currentWeekIso(state.data.weeks);
-  document.getElementById('heatmap').innerHTML = state.data.weekly.map((week) => {
+  const weeks = visibleWeeks();
+  const vis = visibleWeekSet();
+  const current = currentWeekIso(weeks);
+  document.getElementById('heatmap').innerHTML = state.data.weekly.filter((week) => vis.has(week.week)).map((week) => {
     const hot = week.conflicts.length >= 4;
     const warm = week.conflicts.length >= 1 && !hot;
     const on = state.week === week.week ? 'on' : '';
@@ -304,10 +386,11 @@ function bindSort(selector, rerender) {
 
 function renderGantt() {
   const entries = filterEntries();
-  const current = currentWeekIso(state.data.weeks);
+  const weeks = visibleWeeks();
+  const current = currentWeekIso(weeks);
   const thead = document.querySelector('#ganttTable thead');
   const tbody = document.querySelector('#ganttTable tbody');
-  const weekHeaders = state.data.weeks.map((week) => {
+  const weekHeaders = weeks.map((week) => {
     const cls = week.iso === current ? 'current-week' : '';
     return `<th class="${cls}">${esc(week.label)}</th>`;
   }).join('');
@@ -321,13 +404,13 @@ function renderGantt() {
   </tr>`;
 
   if (!entries.length) {
-    tbody.innerHTML = `<tr><td colspan="${5 + state.data.weeks.length}" class="empty">Нет данных по фильтрам</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${5 + weeks.length}" class="empty">Нет данных по фильтрам</td></tr>`;
     return;
   }
 
   tbody.innerHTML = entries.map((entry) => {
     const cfg = state.data.teams[entry.team];
-    const cells = state.data.weeks.map((week) => {
+    const cells = weeks.map((week) => {
       const value = entry.weeks[week.iso];
       const currentCls = week.iso === current ? 'current-week' : '';
       if (!value) return `<td class="week-cell ${currentCls}"></td>`;
@@ -362,6 +445,7 @@ function renderConflicts() {
   const rows = state.data.conflicts.filter((conflict) => {
     if (state.role && conflict.role !== state.role) return false;
     if (state.week && conflict.week !== state.week) return false;
+    if (!visibleWeekSet().has(conflict.week)) return false;
     const teamMatch = conflict.teams.some((full) => {
       const key = Object.entries(state.data.teams).find(([, cfg]) => cfg.full === full)?.[0];
       return key && state.activeTeams.has(key);
@@ -393,7 +477,8 @@ function renderWeekly() {
   const tbody = document.querySelector('#weeklyTable tbody');
   const teamHeaders = state.teamKeys.map((key) => `<th>${esc(state.data.teams[key].full)}</th>`).join('');
   thead.innerHTML = `<tr><th>Неделя</th><th>Всего</th>${teamHeaders}<th>Команды</th><th>Конфликты</th></tr>`;
-  const rows = state.data.weekly.filter((week) => !state.week || week.week === state.week);
+  const vis = visibleWeekSet();
+  const rows = state.data.weekly.filter((week) => vis.has(week.week) && (!state.week || week.week === state.week));
   tbody.innerHTML = rows.map((week) => {
     const hasConflict = week.conflicts.length > 0;
     const multiTeam = week.activeTeams.length >= 2;
@@ -414,11 +499,12 @@ function renderWeekly() {
 }
 
 function renderRoles() {
-  const matrix = roleMatrix(state.data).filter((row) => !state.role || row.role === state.role);
-  const current = currentWeekIso(state.data.weeks);
+  const weeks = visibleWeeks();
+  const matrix = roleMatrix({ ...state.data, weeks }).filter((row) => !state.role || row.role === state.role);
+  const current = currentWeekIso(weeks);
   const thead = document.querySelector('#rolesTable thead');
   const tbody = document.querySelector('#rolesTable tbody');
-  thead.innerHTML = `<tr><th>Роль</th>${state.data.weeks.map((week) =>
+  thead.innerHTML = `<tr><th>Роль</th>${weeks.map((week) =>
     `<th class="${week.iso === current ? 'current-week' : ''}">${esc(week.label)}</th>`
   ).join('')}</tr>`;
   tbody.innerHTML = matrix.map((row) => {
@@ -435,7 +521,12 @@ function renderRoles() {
 function renderCapacity() {
   const data = visibleCapacity();
   const note = document.getElementById('capacityNote');
-  note.textContent = `Ёмкость = штат × ${WORK_DAYS_PER_MONTH} раб. дня в месяц. Баланс = ёмкость − человеко-дни из плана. Фикса = Домашний интернет, Репрайсы = Монетизация. Совмещённые (Судариков, Фёдорова) считаются один раз. Монетизация без дизайнера: спрос идёт в дефицит. Контент в штате нет.`;
+  const keys = selectedQuarterKeys();
+  const labels = keys.map(formatQuarterLabel);
+  const shown = labels.length === 1 ? `Показан ${labels[0]}` : `Показаны ${labels.join(', ')}`;
+  const span = formatQuarterSpan(keys);
+  const monthCount = data.months.length;
+  note.textContent = `${shown}${span ? `: ${span}` : ''} · ёмкость = штат × ${WORK_DAYS_PER_MONTH} × ${monthCount} мес. Баланс = ёмкость − человеко-дни из плана. Фикса = Домашний интернет, Репрайсы = Монетизация. Совмещённые (Судариков, Фёдорова) считаются один раз. Монетизация без дизайнера: спрос идёт в дефицит. Контент в штате нет.`;
   const thead = document.querySelector('#capacityTable thead');
   const tbody = document.querySelector('#capacityTable tbody');
   const monthHeaders = data.months.map((month) => `<th>${esc(formatMonthLabel(month))}</th>`).join('');
@@ -477,6 +568,7 @@ function renderCapacity() {
 
 function renderAll() {
   renderTimelineSwitch();
+  renderQuarterChips();
   renderStats();
   renderHeatmap();
   renderGantt();
