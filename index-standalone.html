@@ -1084,13 +1084,14 @@ function renderStats() {
   const weeks = visibleWeeks();
   const vis = visibleWeekSet();
   const conflicts = state.data.conflicts.filter((conflict) => vis.has(conflict.week));
-  const quarterHint = selectedQuarterKeys().map(formatQuarterLabel).join(', ');
+  const quarterKeys = selectedQuarterKeys();
+  const quarterHint = quarterKeys.map(formatQuarterLabel).join(', ');
   document.getElementById('stats').innerHTML = [
     ['Строк в плане', visible.length, `из ${active.length}`],
     ['Пересечений', conflicts.length, 'роль × неделя'],
     ['Недель', weeks.length, (weeks[0]?.label || '') + ' — ' + (weeks.at(-1)?.label || '')],
     ['Команд', state.teamKeys.length, 'в выбранном таймлайне'],
-    ['Кварталы', selectedQuarterKeys().length, quarterHint || 'в выбранном таймлайне'],
+    [quarterKeys.length === 1 ? 'Квартал' : 'Кварталы', quarterKeys.length, quarterHint || 'в выбранном таймлайне'],
     ['Ролей в дефиците', visibleCapacity().rows.filter((row) => row.balance < 0).length, `штат × ${WORK_DAYS_PER_MONTH} дн./мес.`],
   ].map(([label, value, hint]) => `
     <article class="stat">
