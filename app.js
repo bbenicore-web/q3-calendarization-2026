@@ -371,7 +371,6 @@ function deficitPairWord(count) {
 
 function groupedDeficits(items) {
   const map = new Map();
-  const map = new Map();
   for (const item of items) {
     if (!map.has(item.role)) map.set(item.role, []);
     map.get(item.role).push(item);
