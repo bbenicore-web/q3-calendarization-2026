@@ -120,6 +120,55 @@ html, body {
 .stat .val { font-size: 1.7rem; font-weight: 750; color: var(--accent); }
 .stat .lbl { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
+.deficit-banner {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.05rem 1rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow);
+}
+.deficit-banner.has-deficit {
+  border-color: rgba(255, 93, 108, 0.4);
+  background: linear-gradient(180deg, var(--danger-bg), var(--surface) 48%);
+}
+.deficit-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+  margin-bottom: 0.65rem;
+}
+.deficit-head h2 { font-size: 0.95rem; }
+.deficit-head p { color: var(--muted); font-size: 0.78rem; }
+.deficit-banner.has-deficit .deficit-head h2 { color: var(--danger); }
+.deficit-groups { display: flex; flex-direction: column; gap: 0.42rem; }
+.deficit-role {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  align-items: center;
+}
+.deficit-role-name {
+  min-width: 92px;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+.deficit-teams { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.deficit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem 0.2rem 0.25rem;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+.deficit-chip:hover { border-color: var(--danger); }
+
 .heatmap-card, .toolbar, .table-wrap {
   background: var(--surface);
   border: 1px solid var(--line);
@@ -334,6 +383,7 @@ footer code { color: var(--accent); }
 
     <main class="layout">
       <section class="stats" id="stats"></section>
+      <section class="deficit-banner" id="deficitBanner" aria-live="polite"></section>
       <section class="heatmap-card">
         <div class="heatmap-head">
           <h2>Нагрузка по неделям</h2>
@@ -601,6 +651,39 @@ export function rolePersonDays(data = {}, options = {}) {
   });
 
   return { months, rows, workDaysPerMonth: WORK_DAYS_PER_MONTH };
+}
+
+export function capacityDeficits(data = {}, options = {}) {
+  const roster = options.roster || data.roster || { people: [] };
+  const teams = normalizeTeams(data.teams, data.entries);
+  const teamFilter = options.teams;
+  const keys = Array.isArray(teamFilter) && teamFilter.length
+    ? [...new Set(teamFilter.map((team) => canonicalTeam(roster, team)))]
+    : Object.keys(teams);
+  const items = [];
+  for (const team of keys) {
+    const result = rolePersonDays(data, { roster, teams: [team] });
+    const full = (teams[team] && teams[team].full) || teamFull(teams, team);
+    for (const row of result.rows) {
+      if (!(row.balance < 0)) continue;
+      items.push({
+        team,
+        teamFull: full,
+        role: row.role,
+        fte: row.fte,
+        days: row.days,
+        capacity: row.capacity,
+        balance: row.balance,
+        status: row.status,
+      });
+    }
+  }
+  items.sort((a, b) => (
+    a.balance - b.balance
+    || a.role.localeCompare(b.role, 'ru')
+    || a.teamFull.localeCompare(b.teamFull, 'ru')
+  ));
+  return items;
 }
 
 export function conflictTaskLabel(teams, entry) {
@@ -1037,7 +1120,7 @@ function renderQuarterChips() {
   });
 }
 
-function visibleCapacity() {
+function capacityInput() {
   const baseWeeks = visibleWeeks();
   const weeks = state.week && baseWeeks.some((week) => week.iso === state.week)
     ? baseWeeks.filter((week) => week.iso === state.week)
@@ -1051,8 +1134,20 @@ function visibleCapacity() {
     }
     return Object.keys(entry.weeks || {}).length > 0;
   });
-  return rolePersonDays(
-    { weeks, entries, roster: state.roster },
+  return { weeks, entries, roster: state.roster, teams: state.data.teams };
+}
+
+function visibleCapacity() {
+  return rolePersonDays(capacityInput(), { teams: [...state.activeTeams] });
+}
+
+function visibleDeficits() {
+  const baseWeeks = visibleWeeks();
+  const weeks = state.week && baseWeeks.some((week) => week.iso === state.week)
+    ? baseWeeks.filter((week) => week.iso === state.week)
+    : baseWeeks;
+  return capacityDeficits(
+    { weeks, entries: state.data.entries, roster: state.roster, teams: state.data.teams },
     { teams: [...state.activeTeams] }
   );
 }
@@ -1086,13 +1181,15 @@ function renderStats() {
   const conflicts = state.data.conflicts.filter((conflict) => vis.has(conflict.week));
   const quarterKeys = selectedQuarterKeys();
   const quarterHint = quarterKeys.map(formatQuarterLabel).join(', ');
+  const deficits = visibleDeficits();
+  const deficitRoles = uniqueSorted(deficits.map((item) => item.role));
   document.getElementById('stats').innerHTML = [
     ['Строк в плане', visible.length, `из ${active.length}`],
     ['Пересечений', conflicts.length, 'роль × неделя'],
     ['Недель', weeks.length, (weeks[0]?.label || '') + ' — ' + (weeks.at(-1)?.label || '')],
     ['Команд', state.teamKeys.length, 'в выбранном таймлайне'],
     [quarterKeys.length === 1 ? 'Квартал' : 'Кварталы', quarterKeys.length, quarterHint || 'в выбранном таймлайне'],
-    ['Ролей в дефиците', visibleCapacity().rows.filter((row) => row.balance < 0).length, `штат × ${WORK_DAYS_PER_MONTH} дн./мес.`],
+    ['Дефицит', deficits.length, deficitRoles.length ? deficitRoles.join(', ') : 'роль × команда'],
   ].map(([label, value, hint]) => `
     <article class="stat">
       <div class="val">${esc(value)}</div>
@@ -1100,6 +1197,75 @@ function renderStats() {
       <div class="muted">${esc(hint || '')}</div>
     </article>
   `).join('');
+}
+
+function deficitPairWord(count) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'пара';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'пары';
+  return 'пар';
+}
+
+function groupedDeficits(items) {
+  const map = new Map();
+  const map = new Map();
+  for (const item of items) {
+    if (!map.has(item.role)) map.set(item.role, []);
+    map.get(item.role).push(item);
+  }
+  return [...map.entries()].sort((a, b) => {
+    const sumA = a[1].reduce((sum, item) => sum + item.balance, 0);
+    const sumB = b[1].reduce((sum, item) => sum + item.balance, 0);
+    return sumA - sumB || a[0].localeCompare(b[0], 'ru');
+  });
+}
+
+function renderDeficitBanner() {
+  const root = document.getElementById('deficitBanner');
+  if (!root) return;
+  const items = visibleDeficits();
+  if (!items.length) {
+    root.className = 'deficit-banner';
+    root.innerHTML = `<div class="deficit-head">
+      <h2>Нет дефицита штата</h2>
+      <p>В выбранном периоде спрос команд не превышает ёмкость</p>
+    </div>`;
+    return;
+  }
+  root.className = 'deficit-banner has-deficit';
+  const groups = groupedDeficits(items);
+  const rows = groups.map(([role, teams]) => {
+    const chips = teams.map((item) => {
+      const cfg = state.data.teams[item.team];
+      const badge = cfg
+        ? `<span class="team-badge" style="background:${cfg.bg};color:${cfg.color}">${esc(item.teamFull)}</span>`
+        : esc(item.teamFull);
+      return `<button type="button" class="deficit-chip" data-role="${esc(item.role)}" data-team="${esc(item.team)}" title="${esc(item.role)} · ${esc(item.teamFull)} · спрос ${formatNumber(item.days)} · ёмкость ${formatNumber(item.capacity)}">
+        ${badge}
+        <span class="deficit">${esc(signedDays(item.balance))}</span>
+      </button>`;
+    }).join('');
+    return `<div class="deficit-role">
+      <div class="deficit-role-name">${esc(role)}</div>
+      <div class="deficit-teams">${chips}</div>
+    </div>`;
+  }).join('');
+  root.innerHTML = `<div class="deficit-head">
+    <h2>Дефицит штата</h2>
+    <p>${items.length} ${deficitPairWord(items.length)} роль × команда · клик открывает человеко-дни</p>
+  </div>
+  <div class="deficit-groups">${rows}</div>`;
+  root.querySelectorAll('.deficit-chip').forEach((btn) => {
+    btn.onclick = () => {
+      const role = btn.dataset.role;
+      state.role = role;
+      const roleSel = document.getElementById('roleFilter');
+      if (roleSel) roleSel.value = role;
+      showTab('capacity');
+      renderAll();
+    };
+  });
 }
 
 function renderHeatmap() {
@@ -1326,6 +1492,7 @@ function renderAll() {
   renderTimelineSwitch();
   renderQuarterChips();
   renderStats();
+  renderDeficitBanner();
   renderHeatmap();
   renderGantt();
   renderConflicts();
@@ -1334,15 +1501,15 @@ function renderAll() {
   renderCapacity();
 }
 
+function showTab(tab) {
+  state.tab = tab;
+  document.querySelectorAll('.tab').forEach((item) => item.classList.toggle('active', item.dataset.tab === tab));
+  document.querySelectorAll('.panel').forEach((panel) => panel.classList.toggle('active', panel.id === 'panel-' + tab));
+}
+
 function bindTabs() {
   document.querySelectorAll('.tab').forEach((btn) => {
-    btn.onclick = () => {
-      state.tab = btn.dataset.tab;
-      document.querySelectorAll('.tab').forEach((item) => item.classList.remove('active'));
-      document.querySelectorAll('.panel').forEach((panel) => panel.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
-    };
+    btn.onclick = () => showTab(btn.dataset.tab);
   });
 }
 

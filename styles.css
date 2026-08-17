@@ -113,6 +113,55 @@ html, body {
 .stat .val { font-size: 1.7rem; font-weight: 750; color: var(--accent); }
 .stat .lbl { font-size: 0.72rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
 
+.deficit-banner {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.05rem 1rem;
+  margin-bottom: 1rem;
+  box-shadow: var(--shadow);
+}
+.deficit-banner.has-deficit {
+  border-color: rgba(255, 93, 108, 0.4);
+  background: linear-gradient(180deg, var(--danger-bg), var(--surface) 48%);
+}
+.deficit-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: baseline;
+  margin-bottom: 0.65rem;
+}
+.deficit-head h2 { font-size: 0.95rem; }
+.deficit-head p { color: var(--muted); font-size: 0.78rem; }
+.deficit-banner.has-deficit .deficit-head h2 { color: var(--danger); }
+.deficit-groups { display: flex; flex-direction: column; gap: 0.42rem; }
+.deficit-role {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  align-items: center;
+}
+.deficit-role-name {
+  min-width: 92px;
+  font-weight: 700;
+  font-size: 0.82rem;
+}
+.deficit-teams { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+.deficit-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem 0.2rem 0.25rem;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+.deficit-chip:hover { border-color: var(--danger); }
+
 .heatmap-card, .toolbar, .table-wrap {
   background: var(--surface);
   border: 1px solid var(--line);

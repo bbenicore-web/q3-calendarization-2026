@@ -1,4 +1,4 @@
-import { processTimeline, isVacation, roleMatrix, teamFull, weekCellLabel, rolePersonDays, formatMonthLabel, formatQuarterLabel, formatQuarterSpan, quartersFromWeeks, weeksInQuarters, WORK_DAYS_PER_MONTH } from './process.js';
+import { processTimeline, isVacation, roleMatrix, teamFull, weekCellLabel, rolePersonDays, capacityDeficits, formatMonthLabel, formatQuarterLabel, formatQuarterSpan, quartersFromWeeks, weeksInQuarters, WORK_DAYS_PER_MONTH } from './process.js';
 
 const state = {
   catalog: [],
@@ -282,7 +282,7 @@ function renderQuarterChips() {
   });
 }
 
-function visibleCapacity() {
+function capacityInput() {
   const baseWeeks = visibleWeeks();
   const weeks = state.week && baseWeeks.some((week) => week.iso === state.week)
     ? baseWeeks.filter((week) => week.iso === state.week)
@@ -296,8 +296,20 @@ function visibleCapacity() {
     }
     return Object.keys(entry.weeks || {}).length > 0;
   });
-  return rolePersonDays(
-    { weeks, entries, roster: state.roster },
+  return { weeks, entries, roster: state.roster, teams: state.data.teams };
+}
+
+function visibleCapacity() {
+  return rolePersonDays(capacityInput(), { teams: [...state.activeTeams] });
+}
+
+function visibleDeficits() {
+  const baseWeeks = visibleWeeks();
+  const weeks = state.week && baseWeeks.some((week) => week.iso === state.week)
+    ? baseWeeks.filter((week) => week.iso === state.week)
+    : baseWeeks;
+  return capacityDeficits(
+    { weeks, entries: state.data.entries, roster: state.roster, teams: state.data.teams },
     { teams: [...state.activeTeams] }
   );
 }
@@ -331,13 +343,15 @@ function renderStats() {
   const conflicts = state.data.conflicts.filter((conflict) => vis.has(conflict.week));
   const quarterKeys = selectedQuarterKeys();
   const quarterHint = quarterKeys.map(formatQuarterLabel).join(', ');
+  const deficits = visibleDeficits();
+  const deficitRoles = uniqueSorted(deficits.map((item) => item.role));
   document.getElementById('stats').innerHTML = [
     ['Строк в плане', visible.length, `из ${active.length}`],
     ['Пересечений', conflicts.length, 'роль × неделя'],
     ['Недель', weeks.length, (weeks[0]?.label || '') + ' — ' + (weeks.at(-1)?.label || '')],
     ['Команд', state.teamKeys.length, 'в выбранном таймлайне'],
     [quarterKeys.length === 1 ? 'Квартал' : 'Кварталы', quarterKeys.length, quarterHint || 'в выбранном таймлайне'],
-    ['Ролей в дефиците', visibleCapacity().rows.filter((row) => row.balance < 0).length, `штат × ${WORK_DAYS_PER_MONTH} дн./мес.`],
+    ['Дефицит', deficits.length, deficitRoles.length ? deficitRoles.join(', ') : 'роль × команда'],
   ].map(([label, value, hint]) => `
     <article class="stat">
       <div class="val">${esc(value)}</div>
@@ -345,6 +359,75 @@ function renderStats() {
       <div class="muted">${esc(hint || '')}</div>
     </article>
   `).join('');
+}
+
+function deficitPairWord(count) {
+  const mod10 = count % 10;
+  const mod100 = count % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'пара';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'пары';
+  return 'пар';
+}
+
+function groupedDeficits(items) {
+  const map = new Map();
+  const map = new Map();
+  for (const item of items) {
+    if (!map.has(item.role)) map.set(item.role, []);
+    map.get(item.role).push(item);
+  }
+  return [...map.entries()].sort((a, b) => {
+    const sumA = a[1].reduce((sum, item) => sum + item.balance, 0);
+    const sumB = b[1].reduce((sum, item) => sum + item.balance, 0);
+    return sumA - sumB || a[0].localeCompare(b[0], 'ru');
+  });
+}
+
+function renderDeficitBanner() {
+  const root = document.getElementById('deficitBanner');
+  if (!root) return;
+  const items = visibleDeficits();
+  if (!items.length) {
+    root.className = 'deficit-banner';
+    root.innerHTML = `<div class="deficit-head">
+      <h2>Нет дефицита штата</h2>
+      <p>В выбранном периоде спрос команд не превышает ёмкость</p>
+    </div>`;
+    return;
+  }
+  root.className = 'deficit-banner has-deficit';
+  const groups = groupedDeficits(items);
+  const rows = groups.map(([role, teams]) => {
+    const chips = teams.map((item) => {
+      const cfg = state.data.teams[item.team];
+      const badge = cfg
+        ? `<span class="team-badge" style="background:${cfg.bg};color:${cfg.color}">${esc(item.teamFull)}</span>`
+        : esc(item.teamFull);
+      return `<button type="button" class="deficit-chip" data-role="${esc(item.role)}" data-team="${esc(item.team)}" title="${esc(item.role)} · ${esc(item.teamFull)} · спрос ${formatNumber(item.days)} · ёмкость ${formatNumber(item.capacity)}">
+        ${badge}
+        <span class="deficit">${esc(signedDays(item.balance))}</span>
+      </button>`;
+    }).join('');
+    return `<div class="deficit-role">
+      <div class="deficit-role-name">${esc(role)}</div>
+      <div class="deficit-teams">${chips}</div>
+    </div>`;
+  }).join('');
+  root.innerHTML = `<div class="deficit-head">
+    <h2>Дефицит штата</h2>
+    <p>${items.length} ${deficitPairWord(items.length)} роль × команда · клик открывает человеко-дни</p>
+  </div>
+  <div class="deficit-groups">${rows}</div>`;
+  root.querySelectorAll('.deficit-chip').forEach((btn) => {
+    btn.onclick = () => {
+      const role = btn.dataset.role;
+      state.role = role;
+      const roleSel = document.getElementById('roleFilter');
+      if (roleSel) roleSel.value = role;
+      showTab('capacity');
+      renderAll();
+    };
+  });
 }
 
 function renderHeatmap() {
@@ -571,6 +654,7 @@ function renderAll() {
   renderTimelineSwitch();
   renderQuarterChips();
   renderStats();
+  renderDeficitBanner();
   renderHeatmap();
   renderGantt();
   renderConflicts();
@@ -579,15 +663,15 @@ function renderAll() {
   renderCapacity();
 }
 
+function showTab(tab) {
+  state.tab = tab;
+  document.querySelectorAll('.tab').forEach((item) => item.classList.toggle('active', item.dataset.tab === tab));
+  document.querySelectorAll('.panel').forEach((panel) => panel.classList.toggle('active', panel.id === 'panel-' + tab));
+}
+
 function bindTabs() {
   document.querySelectorAll('.tab').forEach((btn) => {
-    btn.onclick = () => {
-      state.tab = btn.dataset.tab;
-      document.querySelectorAll('.tab').forEach((item) => item.classList.remove('active'));
-      document.querySelectorAll('.panel').forEach((panel) => panel.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('panel-' + btn.dataset.tab).classList.add('active');
-    };
+    btn.onclick = () => showTab(btn.dataset.tab);
   });
 }
 

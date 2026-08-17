@@ -11,6 +11,7 @@ import {
   weeksInQuarters,
   WORK_DAYS_PER_MONTH,
   rolePersonDays,
+  capacityDeficits,
 } from '../process.js';
 
 test('occupancyDays reads week cell day counts and ignores vacation', () => {
@@ -345,5 +346,82 @@ test('rolePersonDays capacity for a quarter is FTE × 22 × months in that quart
   const q4Design = q4.rows.find((row) => row.role === 'Дизайн');
   assert.equal(q4Design.capacity, 5 * WORK_DAYS_PER_MONTH * 3);
   assert.ok(q3Design.days !== q4Design.days, 'Q3 and Q4 design demand should differ');
+});
+
+test('capacityDeficits names the team even when the role is globally in surplus', () => {
+  const roster = {
+    people: [
+      { id: 'anton', name: 'Антон', role: 'Дизайн', allocations: [{ team: 'Тарифы', fte: 1 }] },
+    ],
+  };
+  const data = {
+    weeks: [{ iso: '2026-08-03', label: '03.08' }],
+    teams: {
+      Тарифы: { full: 'Тарифы' },
+      Монетизация: { full: 'Монетизация' },
+      ДИ: { full: 'Домашний интернет' },
+    },
+    entries: [
+      { team: 'Тарифы', task: 'A', resource: 'Антон', role: 'Дизайн', weeks: { '2026-08-03': '5' } },
+      { team: 'Монетизация', task: 'B', resource: 'дизайн', role: 'Дизайн', weeks: { '2026-08-03': '8' } },
+    ],
+    roster,
+  };
+  const global = rolePersonDays(data);
+  const design = global.rows.find((row) => row.role === 'Дизайн');
+  assert.equal(design.balance, 9);
+
+  const deficits = capacityDeficits(data);
+  assert.equal(deficits.length, 1);
+  assert.equal(deficits[0].role, 'Дизайн');
+  assert.equal(deficits[0].team, 'Монетизация');
+  assert.equal(deficits[0].teamFull, 'Монетизация');
+  assert.equal(deficits[0].fte, 0);
+  assert.equal(deficits[0].days, 8);
+  assert.equal(deficits[0].capacity, 0);
+  assert.equal(deficits[0].balance, -8);
+});
+
+test('capacityDeficits splits a missing roster role by team and uses display names', () => {
+  const deficits = capacityDeficits({
+    weeks: [{ iso: '2026-08-03', label: '03.08' }],
+    teams: {
+      Тарифы: { full: 'Тарифы' },
+      ДИ: { full: 'Домашний интернет' },
+    },
+    entries: [
+      { team: 'Тарифы', task: 'A', resource: 'контент', role: 'Контент', weeks: { '2026-08-03': '4' } },
+      { team: 'ДИ', task: 'B', resource: 'контент', role: 'Контент', weeks: { '2026-08-03': '2' } },
+    ],
+    roster: { people: [] },
+  });
+  assert.deepEqual(
+    deficits.map((item) => [item.role, item.team, item.teamFull, item.balance]),
+    [
+      ['Контент', 'Тарифы', 'Тарифы', -4],
+      ['Контент', 'ДИ', 'Домашний интернет', -2],
+    ]
+  );
+});
+
+test('h2 capacityDeficits includes Monetization design and Content by team', () => {
+  const roster = JSON.parse(readFileSync(new URL('../roster.json', import.meta.url), 'utf8'));
+  const raw = JSON.parse(readFileSync(new URL('../data-h2-2026.json', import.meta.url), 'utf8'));
+  const deficits = capacityDeficits({ weeks: raw.weeks, entries: raw.entries, teams: raw.teams, roster });
+  const monetizationDesign = deficits.find((item) => item.role === 'Дизайн' && item.team === 'Монетизация');
+  assert.ok(monetizationDesign, 'Монетизация design should be a named deficit');
+  assert.equal(monetizationDesign.fte, 0);
+  assert.ok(monetizationDesign.days > 0);
+  assert.ok(monetizationDesign.balance < 0);
+
+  const content = deficits.filter((item) => item.role === 'Контент');
+  assert.ok(content.length >= 1);
+  assert.ok(content.every((item) => item.teamFull && item.balance < 0));
+
+  const onlyTariffs = capacityDeficits(
+    { weeks: raw.weeks, entries: raw.entries, teams: raw.teams, roster },
+    { teams: ['Тарифы'] }
+  );
+  assert.ok(onlyTariffs.every((item) => item.team === 'Тарифы'));
 });
 

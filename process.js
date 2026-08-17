@@ -206,6 +206,39 @@ export function rolePersonDays(data = {}, options = {}) {
   return { months, rows, workDaysPerMonth: WORK_DAYS_PER_MONTH };
 }
 
+export function capacityDeficits(data = {}, options = {}) {
+  const roster = options.roster || data.roster || { people: [] };
+  const teams = normalizeTeams(data.teams, data.entries);
+  const teamFilter = options.teams;
+  const keys = Array.isArray(teamFilter) && teamFilter.length
+    ? [...new Set(teamFilter.map((team) => canonicalTeam(roster, team)))]
+    : Object.keys(teams);
+  const items = [];
+  for (const team of keys) {
+    const result = rolePersonDays(data, { roster, teams: [team] });
+    const full = (teams[team] && teams[team].full) || teamFull(teams, team);
+    for (const row of result.rows) {
+      if (!(row.balance < 0)) continue;
+      items.push({
+        team,
+        teamFull: full,
+        role: row.role,
+        fte: row.fte,
+        days: row.days,
+        capacity: row.capacity,
+        balance: row.balance,
+        status: row.status,
+      });
+    }
+  }
+  items.sort((a, b) => (
+    a.balance - b.balance
+    || a.role.localeCompare(b.role, 'ru')
+    || a.teamFull.localeCompare(b.teamFull, 'ru')
+  ));
+  return items;
+}
+
 export function conflictTaskLabel(teams, entry) {
   const full = teamFull(teams, entry.team);
   return `[${full}] ${truncateTask(entry.task || '')} / ${entry.resource || ''}`;
