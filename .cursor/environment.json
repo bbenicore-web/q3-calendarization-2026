@@ -1,0 +1,16 @@
+{
+  "name": "Q3 Calendarization Dashboard",
+  "install": "python3 -c \"import json; json.load(open('data.json')); print('data.json is valid JSON')\"",
+  "terminals": [
+    {
+      "name": "web",
+      "command": "python3 -m http.server 8080"
+    }
+  ],
+  "ports": [
+    {
+      "name": "web server",
+      "port": 8080
+    }
+  ]
+}
