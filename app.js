@@ -1,4 +1,5 @@
 import { processTimeline, isVacation, roleMatrix, teamFull, weekCellLabel, rolePersonDays, capacityDeficits, formatMonthLabel, formatQuarterLabel, formatQuarterSpan, quartersFromWeeks, weeksInQuarters, WORK_DAYS_PER_MONTH } from './process.js';
+import { anonymizeTimeline, anonymizeRoster, isSharePage, shareDataPath } from './anon.js';
 
 const state = {
   catalog: [],
@@ -89,12 +90,17 @@ function uniqueSorted(values) {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ru'));
 }
 
+function dataFile(path) {
+  return isSharePage() ? shareDataPath(path) : path;
+}
+
 async function fetchJson(path) {
-  if (window.EMBEDDED_FILES && window.EMBEDDED_FILES[path]) {
-    return JSON.parse(JSON.stringify(window.EMBEDDED_FILES[path]));
+  const requestPath = dataFile(path);
+  if (window.EMBEDDED_FILES && (window.EMBEDDED_FILES[path] || window.EMBEDDED_FILES[requestPath])) {
+    return JSON.parse(JSON.stringify(window.EMBEDDED_FILES[path] || window.EMBEDDED_FILES[requestPath]));
   }
-  const res = await fetch(path, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`${path}: ${res.status}`);
+  const res = await fetch(requestPath, { cache: 'no-store' });
+  if (!res.ok) throw new Error(`${requestPath}: ${res.status}`);
   return res.json();
 }
 
@@ -111,7 +117,8 @@ async function loadCatalog() {
 
 async function loadRoster() {
   try {
-    state.roster = await fetchJson('roster.json');
+    const roster = await fetchJson('roster.json');
+    state.roster = isSharePage() ? anonymizeRoster(roster) : roster;
   } catch {
     state.roster = { people: [] };
   }
@@ -122,7 +129,7 @@ async function loadTimeline(id) {
   if (!meta) throw new Error('Нет таймлайнов в каталоге');
   const raw = await fetchJson(meta.file);
   state.timelineId = meta.id;
-  state.data = processTimeline(raw);
+  state.data = processTimeline(isSharePage() ? anonymizeTimeline(raw) : raw);
   state.teamKeys = Object.keys(state.data.teams);
   state.activeTeams = new Set(state.teamKeys);
   state.role = '';
@@ -477,17 +484,18 @@ function renderGantt() {
     const cls = week.iso === current ? 'current-week' : '';
     return `<th class="${cls}">${esc(week.label)}</th>`;
   }).join('');
+  const share = isSharePage();
   thead.innerHTML = `<tr>
     <th class="sticky-col col-team" data-col="team">Команда</th>
     <th class="sticky-col col-task" data-col="task">Задача</th>
-    <th data-col="resource">Ресурс</th>
+    <th data-col="resource">${share ? 'Специальность' : 'Ресурс'}</th>
     <th data-col="role">Роль</th>
-    <th data-col="ticket">Тикет</th>
+    ${share ? '' : '<th data-col="ticket">Тикет</th>'}
     ${weekHeaders}
   </tr>`;
 
   if (!entries.length) {
-    tbody.innerHTML = `<tr><td colspan="${5 + weeks.length}" class="empty">Нет данных по фильтрам</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="${(share ? 4 : 5) + weeks.length}" class="empty">Нет данных по фильтрам</td></tr>`;
     return;
   }
 
@@ -516,7 +524,7 @@ function renderGantt() {
       <td class="sticky-col col-task task-cell">${esc(entry.task)}</td>
       <td>${esc(entry.resource)}</td>
       <td>${esc(entry.role)}</td>
-      <td>${esc(entry.ticket)}</td>
+      ${share ? '' : `<td>${esc(entry.ticket)}</td>`}
       ${cells}
     </tr>`;
   }).join('');
@@ -542,7 +550,7 @@ function renderConflicts() {
 
   const thead = document.querySelector('#conflictsTable thead');
   const tbody = document.querySelector('#conflictsTable tbody');
-  thead.innerHTML = '<tr><th>Неделя</th><th>Роль</th><th>Команды</th><th>Задачи</th></tr>';
+  thead.innerHTML = `<tr><th>Неделя</th><th>Роль</th><th>Команды</th><th>${isSharePage() ? 'Специальности' : 'Задачи'}</th></tr>`;
   if (!rows.length) {
     tbody.innerHTML = '<tr><td colspan="4" class="empty">Нет пересечений по фильтрам</td></tr>';
     return;
@@ -609,7 +617,10 @@ function renderCapacity() {
   const shown = labels.length === 1 ? `Показан ${labels[0]}` : `Показаны ${labels.join(', ')}`;
   const span = formatQuarterSpan(keys);
   const monthCount = data.months.length;
-  note.textContent = `${shown}${span ? `: ${span}` : ''} · ёмкость = штат × ${WORK_DAYS_PER_MONTH} × ${monthCount} мес. Баланс = ёмкость − человеко-дни из плана. Фикса = Домашний интернет, Репрайсы = Монетизация. Совмещённые (Судариков, Фёдорова) считаются один раз. Монетизация без дизайнера: спрос идёт в дефицит. Контент в штате нет.`;
+  const shareNote = isSharePage()
+    ? `${shown}${span ? `: ${span}` : ''} · ёмкость = штат × ${WORK_DAYS_PER_MONTH} × ${monthCount} мес. Баланс = ёмкость − человеко-дни из плана. Совмещённые люди считаются один раз. Роль без штата даёт дефицит на весь спрос.`
+    : `${shown}${span ? `: ${span}` : ''} · ёмкость = штат × ${WORK_DAYS_PER_MONTH} × ${monthCount} мес. Баланс = ёмкость − человеко-дни из плана. Фикса = Домашний интернет, Репрайсы = Монетизация. Совмещённые (Судариков, Фёдорова) считаются один раз. Монетизация без дизайнера: спрос идёт в дефицит. Контент в штате нет.`;
+  note.textContent = shareNote;
   const thead = document.querySelector('#capacityTable thead');
   const tbody = document.querySelector('#capacityTable tbody');
   const monthHeaders = data.months.map((month) => `<th>${esc(formatMonthLabel(month))}</th>`).join('');
@@ -635,7 +646,7 @@ function renderCapacity() {
       return `<td class="${cls}" title="${esc(title)}">${cell.days ? `${formatNumber(cell.days)} / ${signedDays(cell.balance)}` : '—'}</td>`;
     }).join('');
     const rowCls = row.balance < 0 ? 'deficit-row' : '';
-    const names = (row.names || []).join(', ') || 'нет в штате';
+    const names = isSharePage() ? (row.role || '') : ((row.names || []).join(', ') || 'нет в штате');
     return `<tr class="${rowCls}">
       <td><strong title="${esc(names)}">${esc(row.role)}</strong></td>
       <td title="${esc(names)}">${esc(formatFte(row.fte))}</td>

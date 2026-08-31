@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="ru" data-share="1">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Календаризация команд</title>
+  <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+  <div id="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <div>
+          <h1>Календаризация команд</h1>
+          <p id="subtitle">Роли и пересечения по неделям</p>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="timeline-switch" id="timelineSwitch" aria-label="Таймлайны"></div>
+        <div class="updated" id="generated"></div>
+      </div>
+    </header>
+
+    <main class="layout">
+      <section class="stats" id="stats"></section>
+      <section class="deficit-banner" id="deficitBanner" aria-live="polite"></section>
+      <section class="heatmap-card">
+        <div class="heatmap-head">
+          <h2>Нагрузка по неделям</h2>
+          <p>Клик по неделе фильтрует таблицы. Повторный клик снимает фильтр.</p>
+        </div>
+        <div class="heatmap" id="heatmap"></div>
+      </section>
+
+      <nav class="tabs" id="tabs">
+        <button class="tab active" data-tab="gantt">Задачи и специальности</button>
+        <button class="tab" data-tab="conflicts">Пересечения</button>
+        <button class="tab" data-tab="weekly">Сводка</button>
+        <button class="tab" data-tab="roles">Роли × недели</button>
+        <button class="tab" data-tab="capacity">Человеко-дни</button>
+      </nav>
+
+      <section class="toolbar" id="toolbar">
+        <input type="search" id="search" placeholder="Поиск по роли или типу…">
+        <select id="roleFilter"><option value="">Все роли</option></select>
+        <select id="typeFilter"><option value="">Все типы</option></select>
+        <div class="chip-group" id="quarterChips" aria-label="Кварталы"></div>
+        <div class="chip-group" id="teamChips" aria-label="Команды"></div>
+      </section>
+
+      <div class="legend">
+        <span><i class="dot conflict"></i> Пересечение роли</span>
+        <span><i class="dot vacation"></i> Отпуск</span>
+        <span><i class="dot current"></i> Текущая неделя</span>
+        <span><i class="dot multi"></i> 2+ команд активны</span>
+        <span>Число в клетке — дни занятости на неделе</span>
+        <span>Ёмкость — штат × 22 раб. дня в месяц, не строки ганта</span>
+      </div>
+
+      <section class="panel active" id="panel-gantt">
+        <div class="table-wrap"><table id="ganttTable"><thead></thead><tbody></tbody></table></div>
+      </section>
+      <section class="panel" id="panel-conflicts">
+        <div class="table-wrap"><table id="conflictsTable"><thead></thead><tbody></tbody></table></div>
+      </section>
+      <section class="panel" id="panel-weekly">
+        <div class="table-wrap"><table id="weeklyTable"><thead></thead><tbody></tbody></table></div>
+      </section>
+      <section class="panel" id="panel-roles">
+        <div class="table-wrap"><table id="rolesTable"><thead></thead><tbody></tbody></table></div>
+      </section>
+      <section class="panel" id="panel-capacity">
+        <div class="capacity-note" id="capacityNote"></div>
+        <div class="table-wrap"><table id="capacityTable"><thead></thead><tbody></tbody></table></div>
+      </section>
+    </main>
+
+    <footer>
+      Обзор загрузки команд по специальностям и неделям. Имена и названия задач скрыты.
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" hidden></div>
+  <script type="module" src="../app.js"></script>
+</body>
+</html>

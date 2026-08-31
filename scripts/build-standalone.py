@@ -7,9 +7,14 @@ root = Path(__file__).resolve().parent.parent
 index = (root / "index.html").read_text(encoding="utf-8")
 styles = (root / "styles.css").read_text(encoding="utf-8")
 process_js = (root / "process.js").read_text(encoding="utf-8")
+anon_js = (root / "anon.js").read_text(encoding="utf-8")
 app_js = (root / "app.js").read_text(encoding="utf-8")
 app_js = app_js.replace(
     "import { processTimeline, isVacation, roleMatrix, teamFull, weekCellLabel, rolePersonDays, capacityDeficits, formatMonthLabel, formatQuarterLabel, formatQuarterSpan, quartersFromWeeks, weeksInQuarters, WORK_DAYS_PER_MONTH } from './process.js';\n",
+    "",
+)
+app_js = app_js.replace(
+    "import { anonymizeTimeline, anonymizeRoster, isSharePage, shareDataPath } from './anon.js';\n",
     "",
 )
 catalog = json.loads((root / "timelines.json").read_text(encoding="utf-8"))
@@ -30,6 +35,7 @@ index = index.replace(
 bundle = f"""<script type="module">
 window.EMBEDDED_FILES = {files_js};
 {process_js}
+{anon_js}
 {app_js}
 </script>"""
 index = index.replace('<script type="module" src="app.js"></script>', bundle)
