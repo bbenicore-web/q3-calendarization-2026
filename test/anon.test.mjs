@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { anonymizeEntry, anonymizeTimeline, anonymizeRoster, specialtyLabel } from '../anon.js';
+import { anonymizeEntry, anonymizeTimeline, anonymizeRoster, anonymizeTeams, specialtyLabel } from '../anon.js';
 import { processTimeline } from '../process.js';
 
 test('specialtyLabel uses the role and marks потребность slots', () => {
@@ -38,6 +38,42 @@ test('anonymized h2 timeline has no personal names or task titles', () => {
   }
   assert.ok(processed.conflicts.every((conflict) =>
     conflict.tasks.every((label) => label.includes('задача') && !/Калинкин|Мерзликин|B2CPROD/i.test(label))
+  ));
+});
+
+test('anonymizeTeams numbers teams in stable key order', () => {
+  const renamed = anonymizeTeams({
+    Монетизация: { full: 'Монетизация', color: '#2E75B6' },
+    ДИ: { full: 'Домашний интернет' },
+  });
+  assert.equal(renamed.Монетизация.full, 'Команда 1');
+  assert.equal(renamed.ДИ.full, 'Команда 2');
+  assert.equal(renamed.Монетизация.color, '#2E75B6');
+});
+
+test('anonymized h2 timeline shows Команда N instead of real team names', () => {
+  const raw = JSON.parse(readFileSync(new URL('../data-h2-2026.json', import.meta.url), 'utf8'));
+  const keys = Object.keys(raw.teams);
+  const anon = anonymizeTimeline(raw);
+  keys.forEach((key, index) => {
+    assert.equal(anon.teams[key].full, `Команда ${index + 1}`);
+  });
+  const processed = processTimeline(anon);
+  const displayNames = Object.values(processed.teams).map((team) => team.full);
+  assert.deepEqual(displayNames, keys.map((_, index) => `Команда ${index + 1}`));
+  const uiBlob = JSON.stringify({
+    teams: displayNames,
+    conflicts: processed.conflicts,
+    weekly: processed.weekly.map((week) => ({
+      activeTeams: week.activeTeams,
+      conflicts: week.conflicts,
+    })),
+  });
+  for (const name of ['Монетизация', 'Домашний интернет', 'ДГП', 'МегаИнтернет', 'Тарифы']) {
+    assert.equal(uiBlob.includes(name), false, `leaked team ${name}`);
+  }
+  assert.ok(processed.conflicts.every((conflict) =>
+    conflict.teams.every((team) => /^Команда \d+$/.test(team))
   ));
 });
 

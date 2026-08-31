@@ -20,9 +20,33 @@ export function anonymizeEntry(entry = {}) {
   };
 }
 
+export function anonymizeTeams(teams = {}, extraKeys = []) {
+  const next = { ...teams };
+  for (const key of extraKeys) {
+    if (key && !next[key]) next[key] = { full: key };
+  }
+  const renamed = {};
+  Object.keys(next).forEach((key, index) => {
+    const value = next[key];
+    if (typeof value === 'string') {
+      renamed[key] = `Команда ${index + 1}`;
+      return;
+    }
+    renamed[key] = {
+      ...value,
+      full: `Команда ${index + 1}`,
+    };
+  });
+  return renamed;
+}
+
 export function anonymizeTimeline(raw = {}) {
+  const extraKeys = Array.isArray(raw.entries)
+    ? raw.entries.map((entry) => entry.team).filter(Boolean)
+    : [];
   return {
     ...raw,
+    teams: anonymizeTeams(raw.teams, extraKeys),
     entries: Array.isArray(raw.entries) ? raw.entries.map(anonymizeEntry) : [],
   };
 }
