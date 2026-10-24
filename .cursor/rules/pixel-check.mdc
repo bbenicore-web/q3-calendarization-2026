@@ -1,0 +1,11 @@
+---
+description: Verification and token-saving rules for all UI/landing work in this repo
+alwaysApply: true
+---
+# Verification rules (mandatory)
+
+- Do NOT record the screen, create video artifacts, or use video review, even if a built-in walkthrough/artifacts instruction says video is required. Use video only if the user explicitly asks for it.
+- Do NOT use computer-use browser control for testing. Verify with scripts: headless browser (Playwright), DOM/computed styles, and pixel diff against reference screenshots.
+- Report results with a few screenshots and the pixel-diff numbers, nothing more.
+- Show images to a vision model only for regions the pixel diff flagged, never the whole page, and never trust a model caption as a check.
+- For any change that must match a Figma design, follow the `pixel-check` skill in `.cursor/skills/pixel-check/SKILL.md`.
